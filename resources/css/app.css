@@ -1,0 +1,97 @@
+@import "./bundles/nioicon/style.css";
+
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+@import "./bundles/simplebar/simplebar.css";
+
+@import "./bundles/choice/choices.css";
+@import "./bundles/dropzone/dropzone.css";
+@import "./bundles/datepicker/datepicker.css";
+@import "./bundles/nouislider/nouislider.css";
+@import "./bundles/swiper/swiper-bundle.css";
+@import "./bundles/simple-datatables/simple-datatables.css";
+@import "./bundles/tagify/tagify.css";
+@import "./bundles/fullcalendar/fullcalendar.css";
+
+@import "./custom/validation/style.css";
+
+@import "./custom/keyframes.css";
+@import "./custom/font-faces.css";
+
+body > #flasher-container,
+body > .fl-wrapper {
+  position: fixed !important;
+  top: calc(4rem + 1rem) !important; /* ajuste selon hauteur navbar */
+  right: 1.25rem !important;
+  z-index: 9999 !important; /* ou encore plus élevé */
+}
+
+
+:root {
+  /* Base appearance */
+  --amber-bg-light: #ffffff;          /* Light mode background */
+  --amber-bg-dark: #1e293b;           /* Dark mode background */
+  --amber-text-light: #4b5563;        /* Light mode text */
+  --amber-text-dark: #f1f5f9;         /* Dark mode text */
+  --amber-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Light mode shadow */
+  --amber-border-radius: 0.4rem;      /* Border radius */
+
+  /* Type-specific colors */
+  --amber-success: #10b981;           /* Success color */
+  --amber-info: #3b82f6;              /* Info color */
+  --amber-warning: #f59e0b;           /* Warning color */
+  --amber-error: #ef4444;             /* Error color */
+  
+  /* Dark mode shadows */
+  --amber-shadow-dark: 0 5px 15px rgba(0, 0, 0, 0.25);
+}
+
+.stripe{
+    background-image: linear-gradient(
+        45deg, 
+        rgba(255, 255, 255, 0.15) 25%, 
+        transparent 25%, 
+        transparent 50%, 
+        rgba(255, 255, 255, 0.15) 50%, 
+        rgba(255, 255, 255, 0.15) 75%, 
+        transparent 75%, 
+        transparent
+    );
+}
+/* Chrome, Safari, Edge (WebKit) */
+input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+}
+
+/* Firefox */
+input[type="search"]::-moz-search-clear-button {
+    display: none;
+}
+
+/* Internet Explorer / old Edge */
+input[type="search"]::-ms-clear {
+    display: none;
+}
+
+/* Dans votre fichier app.css ou le fichier CSS principal */
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap; /* Ajoutez cette ligne */
+  src: url('../fonts/Roboto-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap; /* Ajoutez cette ligne */
+  src: url('../fonts/Nunito-Bold.woff2') format('woff2');
+}
+
+.entry{
+    @apply last:[&>*]:mb-0 prose-p:mb-4 prose-h3:text-2xl lg:prose-h3:text-3xl prose-h4:text-xl lg:prose-h4:text-2xl prose-h5:text-lg lg:prose-h5:text-xl  prose-h6:text-base prose-headings:mb-2 prose-headings:font-heading prose-headings:font-bold prose-headings:leading-tighter prose-headings:text-slate-700 prose-headings:dark:text-white prose-headings:tracking-tight prose-h1:-tracking-snug prose-h2:-tracking-snug prose-ul:mb-4 prose-a:text-primary-500 prose-a:hover:text-primary-600 prose-img:rounded prose-img:my-8;
+}

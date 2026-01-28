@@ -1,0 +1,47 @@
+@php
+    $settings = \App\Models\Setting::first();
+    $favicon = $settings && $settings->favicon 
+        ? asset('storage/' . $settings->favicon) 
+        : asset('favicon.ico');
+    $nomEntreprise = $settings ? $settings->nom_entreprise : 'CTB NOSY BE';
+@endphp
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" id="pageroot" class="{{ dark_mode() ? 'dark' : '' }}">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="author" content="BEZARA Florent">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta name="description" content="{{ config('app.desc') }}">
+        <title>SmartLabo - {{ $nomEntreprise }} </title>
+        <link rel="icon" type="image/x-icon" href="{{ $favicon }}">
+        @vite(['resources/css/app.css'])
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    </head>  
+    <body class="bg-gray-50 font-body text-sm leading-relaxed text-slate-600 dark:text-slate-300 dark:bg-gray-1000 font-normal min-w-[320px]" dir="{{ gcs('direction', 'ltr') }}">
+        <div class="nk-app-root overflow-hidden">
+            <div class="nk-main">
+                @include('layouts.partials.sidebar')
+                <div class="nk-wrap xl:ps-72 [&>.nk-header]:xl:start-72 [&>.nk-header]:xl:w-[calc(100%-theme(spacing.72))] peer-[&.is-compact:not(.has-hover)]:xl:ps-[74px] peer-[&.is-compact:not(.has-hover)]:[&>.nk-header]:xl:start-[74px] peer-[&.is-compact:not(.has-hover)]:[&>.nk-header]:xl:w-[calc(100%-74px)] flex flex-col min-h-screen transition-all duration-300">
+                    
+                    @include('layouts.partials.header')
+
+                    <div id="pagecontent" class="nk-content mt-8  px-1.5 sm:px-5 py-6 sm:py-8">
+                        <div class="container {{ isset($container) ? '' : ' max-w-none' }}">
+                            {{ $slot }}
+                        </div>
+                    </div><!-- content -->
+
+                    @include('layouts.partials.footer')
+
+                </div>
+            </div>
+        </div><!-- root -->
+        @stack('modals')
+        @include('layouts.partials.off-canvas')
+
+        
+        <!-- JavaScript -->
+        @vite(['resources/js/scripts.js'])
+        @stack('scripts')
+    </body>
+</html>

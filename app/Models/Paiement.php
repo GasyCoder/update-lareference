@@ -56,8 +56,8 @@ class Paiement extends Model
 
     public function getStatusBadgeClassAttribute()
     {
-        return $this->status 
-            ? 'bg-green-100 text-green-800 border-green-200' 
+        return $this->status
+            ? 'bg-green-100 text-green-800 border-green-200'
             : 'bg-red-100 text-red-800 border-red-200';
     }
 
@@ -120,7 +120,7 @@ class Paiement extends Model
     public function changerStatutPaiement($nouveauStatut)
     {
         $this->status = $nouveauStatut;
-        
+
         if ($nouveauStatut) {
             // Si on marque comme payé et qu'il n'y a pas encore de date
             if (!$this->date_paiement) {
@@ -130,7 +130,7 @@ class Paiement extends Model
             // Si on marque comme non payé, on supprime la date
             $this->date_paiement = null;
         }
-        
+
         $this->save();
     }
 
@@ -141,6 +141,10 @@ class Paiement extends Model
 
         static::creating(function ($paiement) {
             $paiement->commission_prescripteur = static::calculerCommission($paiement);
+        });
+
+        static::created(function ($paiement) {
+            static::recalculerCommissionsMensuelles($paiement);
         });
 
         static::updating(function ($paiement) {
@@ -159,6 +163,49 @@ class Paiement extends Model
                 $paiement->commission_prescripteur = static::calculerCommission($paiement);
             }
         });
+
+        static::updated(function ($paiement) {
+            if ($paiement->isDirty('montant') || $paiement->isDirty('status') || $paiement->isDirty('date_paiement')) {
+                static::recalculerCommissionsMensuelles($paiement);
+            }
+        });
+
+        static::deleted(function ($paiement) {
+            static::recalculerCommissionsMensuelles($paiement);
+        });
+    }
+
+    /**
+     * Recalculer toutes les commissions du prescripteur pour le mois concerné
+     */
+    public static function recalculerCommissionsMensuelles($paiement)
+    {
+        $prescription = $paiement->prescription ?? Prescription::find($paiement->prescription_id);
+        if (!$prescription || !$prescription->prescripteur) {
+            return;
+        }
+
+        $prescripteur = $prescription->prescripteur;
+        $date = $paiement->date_paiement ?? $paiement->created_at ?? now();
+
+        // Récupérer tous les paiements du prescripteur pour ce mois
+        $paiementsDuMois = static::whereHas('prescription', function ($query) use ($prescripteur) {
+            $query->where('prescripteur_id', $prescripteur->id);
+        })
+            ->whereYear('date_paiement', $date->year)
+            ->whereMonth('date_paiement', $date->month)
+            ->get();
+
+        $quotaAtteint = $prescripteur->isQuotaAtteint($date);
+
+        foreach ($paiementsDuMois as $p) {
+            $nouvelleCommission = static::calculerCommission($p);
+
+            if (round((float) $p->commission_prescripteur, 2) != round((float) $nouvelleCommission, 2)) {
+                $p->commission_prescripteur = $nouvelleCommission;
+                $p->saveQuietly();
+            }
+        }
     }
 
     private static function calculerCommission($paiement)
@@ -170,19 +217,29 @@ class Paiement extends Model
             return 0;
         }
 
+        $prescripteur = $prescription->prescripteur;
+
         // Si le prescripteur est BiologieSolidaire, pas de commission
-        if ($prescription->prescripteur->status === 'BiologieSolidaire') {
+        if ($prescripteur->status === 'BiologieSolidaire') {
             return 0;
         }
 
-        // Récupérer le setting de commission
-        $setting = Setting::first();
-        if (!$setting || !$setting->commission_prescripteur) {
-            return 0;
+        // Vérifier si le quota mensuel est atteint
+        $date = $paiement->date_paiement ?? now();
+        if ($prescripteur->isQuotaAtteint($date)) {
+            $brute = (float) $prescription->getMontantAnalysesCalcule();
+            $net = (float) $prescription->montant_total;
+            $pourcentage = (float) $prescripteur->commission_pourcentage;
+
+            if ($net <= 0) {
+                return 0;
+            }
+
+            // Commission proportionnelle : (Paiement / Net) * (Brut * %)
+            $ratio = (float) $paiement->montant / $net;
+            return $ratio * ($brute * ($pourcentage / 100));
         }
 
-        // Calculer la commission
-        $pourcentage = (float) $setting->commission_prescripteur_pourcentage;
-        return $paiement->montant * ($pourcentage / 100);
+        return 0;
     }
 }

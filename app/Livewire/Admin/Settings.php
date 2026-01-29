@@ -30,6 +30,7 @@ class Settings extends Component
     // Propriétés commissions
     public $commission_prescripteur = true;
     public $commission_prescripteur_pourcentage = 10;
+    public $commission_prescripteur_quota = 250000;
 
     // Propriétés méthodes de paiement
     public $payment_methods = [];
@@ -64,15 +65,16 @@ class Settings extends Component
             'format_unite_argent' => 'required|string|max:10',
             'logo' => 'nullable|image|max:2048',
             'favicon' => 'nullable|image|max:1024',
-            
+
             // Remises
             'remise_pourcentage' => 'required|numeric|min:0|max:100',
             'activer_remise' => 'boolean',
-            
+
             // Commissions
             'commission_prescripteur' => 'boolean',
             'commission_prescripteur_pourcentage' => 'required|numeric|min:0|max:100',
-            
+            'commission_prescripteur_quota' => 'required|numeric|min:0',
+
             // Nouvelles méthodes de paiement (pas d'édition)
             'new_payment_method.label' => 'required|string|max:100',
             'new_payment_method.is_active' => 'boolean',
@@ -94,10 +96,10 @@ class Settings extends Component
         'remise_pourcentage.numeric' => 'Le pourcentage de remise doit être un nombre.',
         'remise_pourcentage.min' => 'Le pourcentage de remise ne peut pas être négatif.',
         'remise_pourcentage.max' => 'Le pourcentage de remise ne peut pas dépasser 100%.',
-        'commission_prescripteur_pourcentage.required' => 'Le pourcentage de commission est obligatoire.',
-        'commission_prescripteur_pourcentage.numeric' => 'Le pourcentage de commission doit être un nombre.',
-        'commission_prescripteur_pourcentage.min' => 'Le pourcentage de commission ne peut pas être négatif.',
         'commission_prescripteur_pourcentage.max' => 'Le pourcentage de commission ne peut pas dépasser 100%.',
+        'commission_prescripteur_quota.required' => 'Le quota de commission par défaut est obligatoire.',
+        'commission_prescripteur_quota.numeric' => 'Le quota de commission doit être un nombre.',
+        'commission_prescripteur_quota.min' => 'Le quota de commission ne peut pas être négatif.',
         'new_payment_method.code.required' => 'Le code est obligatoire.',
         'new_payment_method.code.unique' => 'Ce code existe déjà.',
         'new_payment_method.label.required' => 'Le libellé est obligatoire.',
@@ -116,7 +118,7 @@ class Settings extends Component
     private function chargerSettings()
     {
         $setting = Setting::first();
-        
+
         if ($setting) {
             $this->nom_entreprise = $setting->nom_entreprise ?? '';
             $this->nif = $setting->nif ?? '';
@@ -127,15 +129,19 @@ class Settings extends Component
             $this->remise_pourcentage = is_numeric($setting->remise_pourcentage) ? (float) $setting->remise_pourcentage : 0;
             $this->activer_remise = (bool) ($setting->activer_remise ?? false);
             $this->commission_prescripteur = (bool) ($setting->commission_prescripteur ?? true);
-            $this->commission_prescripteur_pourcentage = is_numeric($setting->commission_prescripteur_pourcentage) 
-                ? (float) $setting->commission_prescripteur_pourcentage 
+            $this->commission_prescripteur_pourcentage = is_numeric($setting->commission_prescripteur_pourcentage)
+                ? (float) $setting->commission_prescripteur_pourcentage
                 : 10;
+            $this->commission_prescripteur_quota = is_numeric($setting->commission_prescripteur_quota)
+                ? (float) $setting->commission_prescripteur_quota
+                : 250000;
 
             // Stocker l'ancien pourcentage pour détecter les changements
             $this->ancienPourcentage = $this->commission_prescripteur_pourcentage;
         } else {
             // Valeurs par défaut si pas de settings
             $this->commission_prescripteur_pourcentage = 10;
+            $this->commission_prescripteur_quota = 250000;
             $this->ancienPourcentage = 10;
         }
     }
@@ -153,13 +159,13 @@ class Settings extends Component
     }
 
     /**
-    * Passer en mode édition pour une méthode de paiement
-    */
+     * Passer en mode édition pour une méthode de paiement
+     */
     public function modifierPaymentMethod($id)
     {
         try {
             $method = PaymentMethod::findOrFail($id);
-            
+
             $this->editingPaymentMethod = $id;
             $this->edit_payment_method = [
                 'code' => $method->code,
@@ -167,10 +173,10 @@ class Settings extends Component
                 'is_active' => $method->is_active,
                 'display_order' => $method->display_order
             ];
-            
+
             $this->successMessage = '';
             $this->showSuccessMessage = false;
-            
+
         } catch (\Exception $e) {
             flash()->error('Erreur lors du chargement de la méthode : ' . $e->getMessage());
         }
@@ -190,8 +196,8 @@ class Settings extends Component
         }
 
         // Convertir en float et valider
-        $nouveauPourcentage = is_numeric($value) ? (float)$value : 0;
-        $ancienPourcentage = is_numeric($this->ancienPourcentage) ? (float)$this->ancienPourcentage : 0;
+        $nouveauPourcentage = is_numeric($value) ? (float) $value : 0;
+        $ancienPourcentage = is_numeric($this->ancienPourcentage) ? (float) $this->ancienPourcentage : 0;
 
         // Valider que les valeurs sont dans la plage acceptable
         if ($nouveauPourcentage < 0 || $nouveauPourcentage > 100) {
@@ -220,7 +226,7 @@ class Settings extends Component
 
         try {
             $setting = Setting::first();
-            
+
             $data = [
                 'nom_entreprise' => $this->nom_entreprise,
                 'nif' => $this->nif,
@@ -251,7 +257,7 @@ class Settings extends Component
             }
 
             flash()->success('🏢 Informations de l\'entreprise sauvegardées avec succès !');
-            
+
         } catch (\Exception $e) {
             flash()->error('❌ Erreur lors de la sauvegarde : ' . $e->getMessage());
         }
@@ -268,7 +274,7 @@ class Settings extends Component
 
         try {
             $setting = Setting::first();
-            
+
             $data = [
                 'remise_pourcentage' => (float) $this->remise_pourcentage,
                 'activer_remise' => (bool) $this->activer_remise,
@@ -284,7 +290,7 @@ class Settings extends Component
             }
 
             flash()->success('🏷️ Configuration des remises sauvegardée avec succès !');
-            
+
         } catch (\Exception $e) {
             flash()->error('❌ Erreur lors de la sauvegarde : ' . $e->getMessage());
         }
@@ -296,19 +302,21 @@ class Settings extends Component
         $this->validate([
             'commission_prescripteur' => 'boolean',
             'commission_prescripteur_pourcentage' => 'required|numeric|min:0|max:100',
+            'commission_prescripteur_quota' => 'required|numeric|min:0',
         ]);
 
         try {
             // S'assurer que la valeur est numérique
-            $pourcentage = is_numeric($this->commission_prescripteur_pourcentage) 
-                ? (float) $this->commission_prescripteur_pourcentage 
+            $pourcentage = is_numeric($this->commission_prescripteur_pourcentage)
+                ? (float) $this->commission_prescripteur_pourcentage
                 : 0;
 
             $setting = Setting::first();
-            
+
             $data = [
                 'commission_prescripteur' => (bool) $this->commission_prescripteur,
                 'commission_prescripteur_pourcentage' => $pourcentage,
+                'commission_prescripteur_quota' => (float) $this->commission_prescripteur_quota,
             ];
 
             if ($setting) {
@@ -322,9 +330,9 @@ class Settings extends Component
 
             $this->ancienPourcentage = $pourcentage;
             $this->showCommissionAlert = false;
-            
+
             flash()->success('💰 Configuration des commissions sauvegardée avec succès ! Le recalcul automatique est en cours...');
-            
+
         } catch (\Exception $e) {
             flash()->error('❌ Erreur lors de la sauvegarde : ' . $e->getMessage());
         }
@@ -341,12 +349,12 @@ class Settings extends Component
 
         try {
             PaymentMethod::create($this->new_payment_method);
-            
+
             $this->chargerPaymentMethods();
             $this->resetNewPaymentMethod();
-            
+
             flash()->success("💳 Méthode de paiement « {$this->new_payment_method['label']} » ajoutée avec succès !");
-            
+
         } catch (\Exception $e) {
             flash()->error('❌ Erreur lors de l\'ajout : ' . $e->getMessage());
         }
@@ -358,14 +366,14 @@ class Settings extends Component
             $method = PaymentMethod::findOrFail($id);
             $ancienStatut = $method->is_active;
             $method->update(['is_active' => !$method->is_active]);
-            
+
             $this->chargerPaymentMethods();
-            
+
             $nouveauStatut = $ancienStatut ? 'désactivée' : 'activée';
             $icone = $ancienStatut ? '🔴' : '🟢';
-            
+
             flash()->success("{$icone} Méthode « {$method->label} » {$nouveauStatut} avec succès !");
-            
+
         } catch (\Exception $e) {
             flash()->error('❌ Erreur lors de la mise à jour : ' . $e->getMessage());
         }
@@ -379,9 +387,9 @@ class Settings extends Component
             $method->delete();
             $this->chargerPaymentMethods();
             $this->resetNewPaymentMethod();
-            
+
             flash()->success("🗑️ Méthode de paiement « {$nomMethode} » supprimée avec succès !");
-            
+
         } catch (\Exception $e) {
             flash()->error('❌ Erreur lors de la suppression : ' . $e->getMessage());
         }
@@ -406,7 +414,7 @@ class Settings extends Component
         $this->showCommissionAlert = false;
         $this->showSuccessMessage = false;
         $this->resetErrorBag();
-        
+
         flash()->info('🔄 Formulaire réinitialisé avec succès !');
     }
 
@@ -417,7 +425,7 @@ class Settings extends Component
             $totalCommissions = \App\Models\Paiement::sum('commission_prescripteur');
             $prescripteursMedecins = \App\Models\Prescripteur::where('status', 'Medecin')->count();
             $prescripteursBiologie = \App\Models\Prescripteur::where('status', 'BiologieSolidaire')->count();
-            
+
             return [
                 'totalPaiements' => $totalPaiements,
                 'totalCommissions' => (float) $totalCommissions,
@@ -443,13 +451,15 @@ class Settings extends Component
 
         $ancienPourcentage = (float) $this->ancienPourcentage;
         $nouveauPourcentage = (float) $this->commission_prescripteur_pourcentage;
-        
+
         // Vérifier que les valeurs sont valides
-        if ($ancienPourcentage < 0 || $nouveauPourcentage < 0 || 
-            $ancienPourcentage > 100 || $nouveauPourcentage > 100) {
+        if (
+            $ancienPourcentage < 0 || $nouveauPourcentage < 0 ||
+            $ancienPourcentage > 100 || $nouveauPourcentage > 100
+        ) {
             return null;
         }
-        
+
         if ($ancienPourcentage == 0 || abs($nouveauPourcentage - $ancienPourcentage) < 0.01) {
             return null;
         }
@@ -463,16 +473,16 @@ class Settings extends Component
             foreach ($paiements as $paiement) {
                 if ($paiement->prescription && $paiement->prescription->prescripteur) {
                     $prescripteur = $paiement->prescription->prescripteur;
-                    
+
                     // Seuls les médecins sont affectés
                     if ($prescripteur->status === 'Medecin') {
                         $montant = is_numeric($paiement->montant) ? (float) $paiement->montant : 0;
-                        
+
                         // Éviter la division par zéro et s'assurer que les calculs sont valides
                         if ($montant > 0) {
                             $ancienneCommission = $montant * ($ancienPourcentage / 100);
                             $nouvelleCommission = $montant * ($nouveauPourcentage / 100);
-                            
+
                             $ancienTotal += $ancienneCommission;
                             $nouveauTotal += $nouvelleCommission;
                             $paiementsAfectes++;
@@ -521,19 +531,19 @@ class Settings extends Component
 
         try {
             $method = PaymentMethod::findOrFail($id);
-            
+
             $method->update([
                 'code' => strtoupper(trim($this->edit_payment_method['code'])),
                 'label' => trim($this->edit_payment_method['label']),
                 'is_active' => $this->edit_payment_method['is_active'],
                 'display_order' => $this->edit_payment_method['display_order']
             ]);
-            
+
             $this->chargerPaymentMethods();
             $this->annulerEdition();
-            
+
             flash()->success("✅ Méthode de paiement « {$method->label} » mise à jour avec succès !");
-            
+
         } catch (\Exception $e) {
             flash()->error('❌ Erreur lors de la modification : ' . $e->getMessage());
         }
@@ -552,7 +562,7 @@ class Settings extends Component
             'display_order' => 1
         ];
         $this->resetErrorBag(['edit_payment_method.code', 'edit_payment_method.label', 'edit_payment_method.display_order']);
-        
+
         flash()->info('🚫 Édition annulée');
     }
 

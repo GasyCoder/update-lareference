@@ -18,6 +18,7 @@ class Setting extends Model
         'format_unite_argent',
         'commission_prescripteur',
         'commission_prescripteur_pourcentage',
+        'commission_prescripteur_quota',
         'logo',        // AJOUTER CETTE LIGNE
         'favicon',     // AJOUTER CETTE LIGNE
     ];
@@ -27,8 +28,9 @@ class Setting extends Model
         'activer_remise' => 'boolean',
         'commission_prescripteur' => 'boolean',
         'commission_prescripteur_pourcentage' => 'float',
+        'commission_prescripteur_quota' => 'float',
     ];
-    
+
     public function defaultPaymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class, 'default_payment_method_id');
@@ -38,13 +40,13 @@ class Setting extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::updating(function ($setting) {
             // Vérifier si le pourcentage de commission a changé
             if ($setting->isDirty('commission_prescripteur_pourcentage')) {
                 $ancienPourcentage = $setting->getOriginal('commission_prescripteur_pourcentage');
                 $nouveauPourcentage = $setting->commission_prescripteur_pourcentage;
-                
+
                 // Déclencher l'event après la sauvegarde
                 static::saved(function () use ($ancienPourcentage, $nouveauPourcentage) {
                     event(new CommissionPourcentageChanged($ancienPourcentage, $nouveauPourcentage));
@@ -60,12 +62,26 @@ class Setting extends Model
     public static function getCommissionPourcentage()
     {
         $setting = static::first();
-        
+
         if (!$setting || !$setting->commission_prescripteur) {
             return 0;
         }
-        
+
         return (float) $setting->commission_prescripteur_pourcentage;
+    }
+
+    /**
+     * Récupérer le quota de commission actuel par défaut
+     */
+    public static function getCommissionQuota()
+    {
+        $setting = static::first();
+
+        if (!$setting || !$setting->commission_prescripteur) {
+            return 0;
+        }
+
+        return (float) $setting->commission_prescripteur_quota;
     }
 
 
@@ -79,7 +95,7 @@ class Setting extends Model
     public static function getLogo()
     {
         $settings = self::getSettings();
-        return $settings && $settings->logo 
+        return $settings && $settings->logo
             ? asset('storage/' . $settings->logo)
             : asset('assets/images/logo_facture.jpg');
     }
@@ -94,8 +110,8 @@ class Setting extends Model
     public static function getFavicon()
     {
         $settings = self::getSettings();
-        return $settings && $settings->favicon 
-            ? asset('storage/' . $settings->favicon) 
+        return $settings && $settings->favicon
+            ? asset('storage/' . $settings->favicon)
             : asset('favicon.ico');
     }
 }

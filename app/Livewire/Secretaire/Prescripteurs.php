@@ -41,6 +41,8 @@ class Prescripteurs extends Component
     public $code_postal = '';
     public $notes = '';
     public $is_active = true;
+    public $commission_quota = 250000;
+    public $commission_pourcentage = 10;
 
     // Propriétés pour les commissions
     public $selectedPrescripteur;
@@ -74,6 +76,8 @@ class Prescripteurs extends Component
         'code_postal' => 'nullable|max:10',
         'notes' => 'nullable|max:1000',
         'is_active' => 'boolean',
+        'commission_quota' => 'required|numeric|min:0',
+        'commission_pourcentage' => 'required|numeric|min:0|max:100',
     ];
 
     protected $messages = [
@@ -134,6 +138,8 @@ class Prescripteurs extends Component
         $this->code_postal = $prescripteur->code_postal;
         $this->notes = $prescripteur->notes;
         $this->is_active = $prescripteur->is_active;
+        $this->commission_quota = $prescripteur->commission_quota;
+        $this->commission_pourcentage = $prescripteur->commission_pourcentage;
 
         $this->showPrescripteurModal = true;
     }
@@ -165,6 +171,8 @@ class Prescripteurs extends Component
                 'code_postal' => $this->code_postal,
                 'notes' => $this->notes,
                 'is_active' => $this->is_active,
+                'commission_quota' => $this->commission_quota,
+                'commission_pourcentage' => $this->commission_pourcentage,
             ];
 
             if ($this->prescripteurId) {
@@ -223,11 +231,24 @@ class Prescripteurs extends Component
     private function resetPrescripteurForm()
     {
         $this->reset([
-            'nom', 'prenom', 'grade', 'specialite', 'status', 'telephone',
-            'email', 'adresse', 'ville', 'code_postal', 'notes'
+            'nom',
+            'prenom',
+            'grade',
+            'specialite',
+            'status',
+            'telephone',
+            'email',
+            'adresse',
+            'ville',
+            'code_postal',
+            'notes',
+            'commission_quota',
+            'commission_pourcentage'
         ]);
         $this->is_active = true;
         $this->status = 'Medecin';
+        $this->commission_quota = Setting::getCommissionQuota();
+        $this->commission_pourcentage = Setting::getCommissionPourcentage();
         $this->resetErrorBag();
     }
 
@@ -249,7 +270,7 @@ class Prescripteurs extends Component
             return;
         }
 
-        $this->commissionPourcentage = Setting::getCommissionPourcentage();
+        $this->commissionPourcentage = $this->selectedPrescripteur->commission_pourcentage;
 
         if (!$this->dateDebut) {
             $this->dateDebut = now()->startOfYear()->format('Y-m-d');
@@ -358,72 +379,77 @@ class Prescripteurs extends Component
         }
     }
 
-public function generateCommissionPDF()
-{
-    if (!$this->selectedPrescripteur || $this->selectedPrescripteur->status === 'BiologieSolidaire') {
-        flash()->error('Impossible de générer une facture pour un prescripteur Biologie Solidaire.');
-        return;
-    }
-
-    try {
-        // Chemin unique du template
-        $template = 'pdf.autre.commission-facture';
-
-        // Vérifier si le template existe
-        if (!view()->exists($template)) {
-            flash()->error("Le template PDF '$template' n'existe pas. Vérifiez le chemin du fichier.");
+    public function generateCommissionPDF()
+    {
+        if (!$this->selectedPrescripteur || $this->selectedPrescripteur->status === 'BiologieSolidaire') {
+            flash()->error('Impossible de générer une facture pour un prescripteur Biologie Solidaire.');
             return;
         }
 
-        // Charger les données nécessaires
-        $statistiques = $this->selectedPrescripteur->getStatistiquesCommissions(
-            $this->dateDebut,
-            $this->dateFin
-        );
+        try {
+            // Chemin unique du template
+            $template = 'pdf.autre.commission-facture';
 
-        $commissions = $this->selectedPrescripteur->getCommissionsParMois(
-            null,
-            $this->dateDebut,
-            $this->dateFin
-        );
+            // Vérifier si le template existe
+            if (!view()->exists($template)) {
+                flash()->error("Le template PDF '$template' n'existe pas. Vérifiez le chemin du fichier.");
+                return;
+            }
 
-        $commissionDetails = [
-            'data' => $commissions,
-            ...$statistiques
-        ];
+            // Charger les données nécessaires
+            $statistiques = $this->selectedPrescripteur->getStatistiquesCommissions(
+                $this->dateDebut,
+                $this->dateFin
+            );
 
-        // Préparer les données pour le PDF
-        $data = [
-            'prescripteur' => $this->selectedPrescripteur,
-            'commissionDetails' => $commissionDetails,
-            'commissionPourcentage' => $this->commissionPourcentage,
-            'dateDebut' => $this->dateDebut,
-            'dateFin' => $this->dateFin,
-            'dateEmission' => now()->format('d/m/Y'),
-        ];
+            if (($statistiques['total_commission'] ?? 0) == 0) {
+                flash()->warning('Aucune commission à facturer pour cette période.');
+                return;
+            }
 
-        // Générer le PDF
-        $pdf = Pdf::loadView($template, $data);
+            $commissions = $this->selectedPrescripteur->getCommissionsParMois(
+                null,
+                $this->dateDebut,
+                $this->dateFin
+            );
 
-        // Nom du fichier dynamique
-        $nomFichier = 'facture_commissions_' . \Illuminate\Support\Str::slug($this->selectedPrescripteur->nom_complet) . '_' . now()->format('Ymd') . '.pdf';
+            $commissionDetails = [
+                'data' => $commissions,
+                ...$statistiques
+            ];
 
-        // Retourner le téléchargement
-        return response()->streamDownload(
-            fn() => print($pdf->output()),
-            $nomFichier
-        );
+            // Préparer les données pour le PDF
+            $data = [
+                'prescripteur' => $this->selectedPrescripteur,
+                'commissionDetails' => $commissionDetails,
+                'commissionPourcentage' => $this->commissionPourcentage,
+                'dateDebut' => $this->dateDebut,
+                'dateFin' => $this->dateFin,
+                'dateEmission' => now()->format('d/m/Y'),
+            ];
 
-    } catch (\Exception $e) {
-        \Log::error('Erreur génération PDF: ' . $e->getMessage(), [
-            'prescripteur' => $this->selectedPrescripteur->id ?? null,
-            'dateDebut' => $this->dateDebut,
-            'dateFin' => $this->dateFin
-        ]);
+            // Générer le PDF
+            $pdf = Pdf::loadView($template, $data);
 
-        flash()->error('Erreur lors de la génération du PDF : ' . $e->getMessage());
+            // Nom du fichier dynamique
+            $nomFichier = 'facture_commissions_' . \Illuminate\Support\Str::slug($this->selectedPrescripteur->nom_complet) . '_' . now()->format('Ymd') . '.pdf';
+
+            // Retourner le téléchargement
+            return response()->streamDownload(
+                fn() => print ($pdf->output()),
+                $nomFichier
+            );
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur génération PDF: ' . $e->getMessage(), [
+                'prescripteur' => $this->selectedPrescripteur->id ?? null,
+                'dateDebut' => $this->dateDebut,
+                'dateFin' => $this->dateFin
+            ]);
+
+            flash()->error('Erreur lors de la génération du PDF : ' . $e->getMessage());
+        }
     }
-}
 
     private function calculateGlobalStatistics()
     {
@@ -467,18 +493,18 @@ public function generateCommissionPDF()
         $prescripteurs = Prescripteur::query()
             ->withCount([
                 'prescriptions as total_prescriptions',
-                'prescriptions as prescriptions_commissionnables' => function($q) {
+                'prescriptions as prescriptions_commissionnables' => function ($q) {
                     $q->whereHas('paiements');
                 }
             ])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
-                    $q->where('nom', 'like', '%'.$this->search.'%')
-                    ->orWhere('prenom', 'like', '%'.$this->search.'%')
-                    ->orWhere('grade', 'like', '%'.$this->search.'%')
-                    ->orWhere('email', 'like', '%'.$this->search.'%')
-                    ->orWhere('telephone', 'like', '%'.$this->search.'%')
-                    ->orWhere('specialite', 'like', '%'.$this->search.'%');
+                    $q->where('nom', 'like', '%' . $this->search . '%')
+                        ->orWhere('prenom', 'like', '%' . $this->search . '%')
+                        ->orWhere('grade', 'like', '%' . $this->search . '%')
+                        ->orWhere('email', 'like', '%' . $this->search . '%')
+                        ->orWhere('telephone', 'like', '%' . $this->search . '%')
+                        ->orWhere('specialite', 'like', '%' . $this->search . '%');
                 });
             })
             ->when($this->specialiteFilter, function ($query) {

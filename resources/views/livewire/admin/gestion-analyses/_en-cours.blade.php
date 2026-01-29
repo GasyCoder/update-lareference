@@ -41,12 +41,9 @@
                 @forelse($data as $prescription)
                     @php
                         $heuresEnCours = $prescription->updated_at->diffInHours(now());
-                        $totalAnalyses = $prescription->analyses()->count();
-                        $analysesTerminees = $prescription->analyses()
-                            ->wherePivotIn('status', ['TERMINE', 'VALIDE'])
-                            ->count();
-                        $progression = $totalAnalyses > 0
-                            ? round(($analysesTerminees / $totalAnalyses) * 100)
+                        $analysesTerminees = $prescription->analyses()->wherePivot('status', 'TERMINE')->count();
+                        $progression = $prescription->analyses_count > 0
+                            ? round(($analysesTerminees / $prescription->analyses_count) * 100)
                             : 0;
                     @endphp
                     <tr wire:key="en-cours-{{ $prescription->id }}"
@@ -102,7 +99,8 @@
                                 <div class="flex justify-between items-center text-[10px]">
                                     <span class="text-slate-500 dark:text-slate-400 font-medium">{{ $progression }}%
                                         terminé</span>
-                                    <span class="text-slate-400">{{ $analysesTerminees }}/{{ $totalAnalyses }}</span>
+                                    <span
+                                        class="text-slate-400">{{ $analysesTerminees }}/{{ $prescription->analyses_count }}</span>
                                 </div>
                             </div>
                         </td>
@@ -170,17 +168,18 @@
                             @endif
                         </td>
 
+                        {{-- Actions --}}
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end gap-2">
-                                <button wire:click="ouvrirFacture({{ $prescription->id }})"
-                                    class="inline-flex items-center justify-center w-8 h-8 text-indigo-600 bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-lg hover:bg-indigo-200 transition-colors"
-                                    title="Facture">
-                                    <em class="ni ni-file-text"></em>
-                                </button>
                                 <button wire:click="showDetails({{ $prescription->id }})"
                                     class="inline-flex items-center justify-center w-8 h-8 text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg hover:bg-blue-200 transition-colors"
                                     title="Voir détails">
                                     <em class="ni ni-eye"></em>
+                                </button>
+                                <button wire:click="openChangeStatusModal({{ $prescription->id }})"
+                                    class="inline-flex items-center justify-center w-8 h-8 text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-lg hover:bg-green-200 transition-colors"
+                                    title="Changer statut">
+                                    <em class="ni ni-edit"></em>
                                 </button>
                             </div>
                         </td>

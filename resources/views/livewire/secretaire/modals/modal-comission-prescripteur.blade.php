@@ -68,8 +68,8 @@
                                         <tr>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mois</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Prescriptions</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Montant analyses</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Montant payé</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Montant analyses (Brut)</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status Quota</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Commission ({{ $commissionPourcentage }}%)</th>
                                         </tr>
                                     </thead>
@@ -87,11 +87,34 @@
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">
                                                     {{ number_format($detail->montant_analyses, 0, ',', ' ') }} Ar
                                                 </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">
-                                                    {{ number_format($detail->montant_paye ?? 0, 0, ',', ' ') }} Ar
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                    @if($detail->quota_atteint)
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                            </svg>
+                                                            Quota atteint
+                                                        </span>
+                                                    @else
+                                                        <div class="flex flex-col">
+                                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                                                Sous quota
+                                                            </span>
+                                                            <span class="text-[10px] text-gray-500 mt-1">
+                                                                {{ number_format($detail->montant_analyses, 0, ',', ' ') }} / {{ number_format($detail->quota_montant, 0, ',', ' ') }}
+                                                            </span>
+                                                        </div>
+                                                    @endif
                                                 </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">
-                                                    {{ number_format($detail->commission ?? 0, 0, ',', ' ') }} Ar
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold {{ $detail->commission > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400' }}">
+                                                    @if($detail->commission > 0)
+                                                        {{ number_format($detail->commission, 0, ',', ' ') }} Ar
+                                                    @else
+                                                        0 Ar
+                                                        @if(!$detail->quota_atteint)
+                                                            <div class="text-[10px] font-normal text-red-500 italic">Quota non atteint</div>
+                                                        @endif
+                                                    @endif
                                                 </td>
                                             </tr>
                                             <!-- Sous-tableau pour les détails des prescriptions -->
@@ -171,15 +194,19 @@
                                     <div>
                                         <h4 class="text-lg font-semibold text-gray-900 dark:text-white">Commission totale à percevoir</h4>
                                         <p class="text-sm text-gray-600 dark:text-gray-400">
-                                            Sur {{ $commissionDetails['total_prescriptions'] ?? 0 }} prescription(s) payée(s)
+                                            @if(($commissionDetails['total_commission'] ?? 0) > 0)
+                                                Sur {{ $commissionDetails['total_prescriptions'] ?? 0 }} prescription(s) payée(s)
+                                            @else
+                                                Le quota mensuel n'est pas encore atteint pour générer des commissions.
+                                            @endif
                                         </p>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-3xl font-bold text-green-600 dark:text-green-400">
+                                        <div class="text-3xl font-bold {{ ($commissionDetails['total_commission'] ?? 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400' }}">
                                             {{ number_format($commissionDetails['total_commission'] ?? 0, 0, ',', ' ') }} Ar
                                         </div>
                                         <div class="text-sm text-gray-600 dark:text-gray-400">
-                                            Taux : {{ $commissionPourcentage }}% du montant payé
+                                            Taux : {{ $commissionPourcentage }}% du prix d'analyse brute
                                         </div>
                                     </div>
                                 </div>
@@ -192,7 +219,15 @@
                         <button wire:click="$set('showCommissionModal', false)" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 border border-transparent rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-offset-gray-800 transition-colors">
                             Fermer
                         </button>
-                        <button wire:click="generateCommissionPDF" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors">
+                        <button 
+                            wire:click="generateCommissionPDF" 
+                            @disabled(($commissionDetails['total_commission'] ?? 0) == 0)
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            title="{{ ($commissionDetails['total_commission'] ?? 0) == 0 ? 'Aucune commission à facturer' : 'Télécharger la facture PDF' }}"
+                        >
+                            <svg class="w-4 h-4 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
                             Télécharger PDF
                         </button>
                     </div>

@@ -32,6 +32,7 @@ use App\Http\Controllers\BiologistePrescriptionController;
 use App\Livewire\Secretaire\Prescription\EditPrescription;
 use App\Livewire\Secretaire\Prescription\PrescriptionIndex;
 use App\Http\Controllers\Biologiste\PrescriptionPdfController;
+use App\Livewire\Admin\GestionAnalyses;
 
 
 
@@ -82,21 +83,21 @@ Route::middleware(['auth', 'verified', 'role.redirect'])->group(function () {
 // ============================================
 // ROUTES SPÉCIFIQUES AUX SECRÉTAIRES
 // ============================================
-Route::middleware(['auth', 'verified', 'role:secretaire'])->prefix('secretaire')->name('secretaire.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:secretaire,admin'])->prefix('secretaire')->name('secretaire.')->group(function () {
     Route::get('prescription/listes', PrescriptionIndex::class)->name('prescription.index');
     Route::get('nouvel-prescription', AddPrescription::class)->name('prescription.create');
     Route::get('/prescription/edit/{prescriptionId}', EditPrescription::class)->name('prescription.edit');
-    
-    Route::get('/prescription/{prescription}/facture', function(Prescription $prescription) {
+
+    Route::get('/prescription/{prescription}/facture', function (Prescription $prescription) {
         $prescription->load(['patient', 'prescripteur', 'analyses', 'prelevements', 'paiements.paymentMethod', 'secretaire']);
-        
+
         $pdf = PDF::loadView('factures.pdf-template', compact('prescription'))
-                ->setPaper('a4', 'portrait')
-                ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
-        
+            ->setPaper('a4', 'portrait')
+            ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+
         return $pdf->stream("facture-{$prescription->reference}.pdf");
     })->name('prescription.facture');
-        
+
     Route::get('patients', Patients::class)->name('patients');
     Route::get('patients/{patient}', PatientDetail::class)->name('patient.detail');
     Route::get('prescripteurs', Prescripteurs::class)->name('prescripteurs');
@@ -104,13 +105,13 @@ Route::middleware(['auth', 'verified', 'role:secretaire'])->prefix('secretaire')
 
     // Route pour afficher le journal de caisse
     Route::get('/journal-caisse', JournalCaisse::class)->name('journal-caisse');
-    Route::get('/secretaire/etiquettes', GestionEtiquettes::class)->name('etiquettes');  
+    Route::get('/secretaire/etiquettes', GestionEtiquettes::class)->name('etiquettes');
 });
 
 // ============================================ Résultats PDF prescriptions
 // ROUTES SPÉCIFIQUES AUX SECRETAIRES, BIOLOGISTES
 // ============================================
-Route::middleware(['auth', 'verified', 'role:secretaire,biologiste'])->prefix('laboratoire')->name('laboratoire.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:secretaire,biologiste,admin'])->prefix('laboratoire')->name('laboratoire.')->group(function () {
     // ✅ CORRECTION : Routes PDF avec deux options
     Route::get('/prescription/{prescription}/pdf', [PrescriptionPdfController::class, 'show'])
         ->name('prescription.pdf');
@@ -161,7 +162,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('utilisateurs', UsersIndex::class)->name('users');
     Route::get('parametres', Settings::class)->name('settings');
     Route::get('trace-patients', TracePatient::class)->name('trace-patients');
-    
+
+    // Ajout de la route pour voir une prescription en tant qu'admin
+    Route::get('/prescription/{prescription}', ShowPrescription::class)->name('prescriptions.show');
+
+    Route::get('gestion-analyses', GestionAnalyses::class)->name('gestion-analyses');
 });
 
 

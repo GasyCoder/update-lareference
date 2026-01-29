@@ -34,6 +34,9 @@ class Prescription extends Model
         'renseignement_clinique',
         'remise',
         'status',
+        'technicien_id',
+        'date_debut_traitement',
+        'date_reprise_traitement',
     ];
 
     protected $casts = [
@@ -69,6 +72,11 @@ class Prescription extends Model
         return $this->belongsTo(Patient::class, 'patient_id');
     }
 
+    public function technicien()
+    {
+        return $this->belongsTo(User::class, 'technicien_id');
+    }
+
     public function prescripteur()
     {
         return $this->belongsTo(Prescripteur::class, 'prescripteur_id');
@@ -76,7 +84,9 @@ class Prescription extends Model
 
     public function analyses()
     {
-        return $this->belongsToMany(Analyse::class, 'prescription_analyse')->withTimestamps();
+        return $this->belongsToMany(Analyse::class, 'prescription_analyse')
+            ->withPivot(['status', 'prix', 'is_payer'])
+            ->withTimestamps();
     }
 
     public function resultats()
@@ -111,14 +121,14 @@ class Prescription extends Model
     public function prelevementsAvecQuantite()
     {
         return $this->tubes()
-                   ->join('prelevements', 'tubes.prelevement_id', '=', 'prelevements.id')
-                   ->select(
-                       'prelevements.*',
-                       DB::raw('COUNT(tubes.id) as quantite_tubes'),
-                       DB::raw('GROUP_CONCAT(tubes.code_barre) as codes_barres')
-                   )
-                   ->groupBy('prelevements.id', 'prelevements.code', 'prelevements.denomination', 'prelevements.prix')
-                   ->get();
+            ->join('prelevements', 'tubes.prelevement_id', '=', 'prelevements.id')
+            ->select(
+                'prelevements.*',
+                DB::raw('COUNT(tubes.id) as quantite_tubes'),
+                DB::raw('GROUP_CONCAT(tubes.code_barre) as codes_barres')
+            )
+            ->groupBy('prelevements.id', 'prelevements.code', 'prelevements.denomination', 'prelevements.prix')
+            ->get();
     }
 
     public function paiements()
@@ -150,7 +160,7 @@ class Prescription extends Model
     public function marquerARefaire($commentaire = null, $userId = null)
     {
         DB::beginTransaction();
-        
+
         try {
             // Vérifier le statut actuel
             if (!in_array($this->status, [self::STATUS_VALIDE, self::STATUS_TERMINE])) {
@@ -219,14 +229,14 @@ class Prescription extends Model
 
         } catch (\Exception $e) {
             DB::rollback();
-            
+
             \Log::error('Erreur lors de la mise à refaire de la prescription', [
                 'prescription_id' => $this->id,
                 'reference' => $this->reference,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             throw new \Exception('Erreur lors de la mise à refaire : ' . $e->getMessage());
         }
     }
@@ -246,7 +256,7 @@ class Prescription extends Model
     {
         return $this->resultats()
             ->whereNull('deleted_at')
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->whereNotNull('valeur')
                     ->where('valeur', '!=', '')
                     ->orWhereNotNull('resultats');
@@ -261,7 +271,7 @@ class Prescription extends Model
     public function getMontantAnalysesCalcule()
     {
         $this->loadMissing(['analyses.parent']);
-        
+
         $total = 0;
         $parentsTraites = [];
 
@@ -281,7 +291,7 @@ class Prescription extends Model
                 $total += $analyse->prix;
             }
         }
-        
+
         return $total;
     }
 
@@ -290,7 +300,7 @@ class Prescription extends Model
      */
     public function getMontantPrelevementsCalcule()
     {
-        return $this->prelevementsAvecQuantite()->sum(function($prelevement) {
+        return $this->prelevementsAvecQuantite()->sum(function ($prelevement) {
             return $prelevement->prix * $prelevement->quantite_tubes;
         });
     }
@@ -299,7 +309,7 @@ class Prescription extends Model
     {
         $montantAnalyses = $this->getMontantAnalysesCalcule();
         $montantPrelevements = $this->getMontantPrelevementsCalcule();
-        
+
         $total = $montantAnalyses + $montantPrelevements;
         return max(0, $total - ($this->remise ?? 0));
     }
@@ -319,6 +329,27 @@ class Prescription extends Model
         $montantTotal = $this->getMontantTotalAttribute();
         $montantPaye = $this->paiements()->sum('montant');
         return $montantPaye >= $montantTotal;
+    }
+
+    public function getPaymentStatusDisplayAttribute()
+    {
+        // No payments exist
+        if ($this->paiements->isEmpty()) {
+            return 'no_payments';
+        }
+
+        // Check if fully paid
+        if ($this->est_payee_completement) { // This uses the existing accessor
+            return 'fully_paid';
+        }
+
+        // If it has payments but is not fully paid, it's partially paid
+        if ($this->paiements->sum('montant') > 0) {
+            return 'partially_paid';
+        }
+
+        // If it has payments, but the sum is 0 (or less), it's unpaid
+        return 'unpaid';
     }
 
     // MÉTHODES D'ARCHIVAGE
@@ -389,20 +420,20 @@ class Prescription extends Model
     public function genererReferenceUnique()
     {
         $annee = date('Y');
-        
+
         $compteur = static::withTrashed()
-                         ->whereRaw('YEAR(created_at) = ?', [$annee])
-                         ->count() + 1;
-        
+            ->whereRaw('YEAR(created_at) = ?', [$annee])
+            ->count() + 1;
+
         $numero = str_pad($compteur, 5, '0', STR_PAD_LEFT);
         $reference = "PRE-{$annee}-{$numero}";
-        
+
         while (static::withTrashed()->where('reference', $reference)->exists()) {
             $compteur++;
             $numero = str_pad($compteur, 5, '0', STR_PAD_LEFT);
             $reference = "PRE-{$annee}-{$numero}";
         }
-        
+
         return $reference;
     }
 
@@ -410,9 +441,9 @@ class Prescription extends Model
     {
         $annee = date('Y');
         $compteur = static::withTrashed()
-                         ->whereRaw('YEAR(created_at) = ?', [$annee])
-                         ->count() + 1;
-        
+            ->whereRaw('YEAR(created_at) = ?', [$annee])
+            ->count() + 1;
+
         $numero = str_pad($compteur, 5, '0', STR_PAD_LEFT);
         return "PRE-{$annee}-{$numero}";
     }
@@ -430,55 +461,55 @@ class Prescription extends Model
     public function forceDeleteWithRelations()
     {
         DB::beginTransaction();
-        
+
         try {
             // ✅ CORRECTION : Supprimer directement depuis les tables (ignore soft deletes)
-            
+
             // 1. Supprimer les antibiogrammes (actifs + soft deleted)
             DB::table('antibiogrammes')
                 ->where('prescription_id', $this->id)
                 ->delete();
-            
+
             // 2. Supprimer les résultats (actifs + soft deleted)
             DB::table('resultats')
                 ->where('prescription_id', $this->id)
                 ->delete();
-            
+
             // 3. Supprimer les tubes (actifs + soft deleted)
             DB::table('tubes')
                 ->where('prescription_id', $this->id)
                 ->delete();
-            
+
             // 4. Supprimer les paiements (actifs + soft deleted)
             DB::table('paiements')
                 ->where('prescription_id', $this->id)
                 ->delete();
-            
+
             // 5. Détacher les analyses de la table pivot
             DB::table('prescription_analyse')
                 ->where('prescription_id', $this->id)
                 ->delete();
-            
+
             // 6. Supprimer la prescription elle-même
             $this->forceDelete();
-            
+
             DB::commit();
-            
+
             \Log::info('Prescription supprimée définitivement avec toutes ses relations', [
                 'prescription_id' => $this->id,
                 'reference' => $this->reference
             ]);
-            
+
             return true;
-            
+
         } catch (\Exception $e) {
             DB::rollback();
-            
+
             \Log::error('Erreur lors de la suppression définitive de la prescription', [
                 'prescription_id' => $this->id,
                 'error' => $e->getMessage()
             ]);
-            
+
             throw $e;
         }
     }
@@ -496,51 +527,51 @@ class Prescription extends Model
                 $prescription->reference = $prescription->genererReferenceUnique();
             }
         });
-        
+
         // ✅ Quand une prescription est soft deleted
         static::deleting(function ($prescription) {
             // Soft delete tous les paiements
             $prescription->paiements()->update(['deleted_at' => now()]);
-            
+
             // Soft delete tous les résultats
             $prescription->resultats()->update(['deleted_at' => now()]);
-            
+
             // Soft delete tous les tubes
             $prescription->tubes()->update(['deleted_at' => now()]);
-            
+
             // Soft delete tous les antibiogrammes
             if (method_exists($prescription, 'antibiogrammes')) {
                 $prescription->antibiogrammes()->update(['deleted_at' => now()]);
             }
-            
+
             \Log::info('Relations soft deleted avec la prescription', [
                 'prescription_id' => $prescription->id,
                 'reference' => $prescription->reference
             ]);
         });
-        
+
         // ✅ Quand une prescription est restaurée
         static::restoring(function ($prescription) {
             // Restaurer tous les paiements
             $prescription->paiements()->withTrashed()->update(['deleted_at' => null]);
-            
+
             // Restaurer tous les résultats
             $prescription->resultats()->withTrashed()->update(['deleted_at' => null]);
-            
+
             // Restaurer tous les tubes
             $prescription->tubes()->withTrashed()->update(['deleted_at' => null]);
-            
+
             // Restaurer tous les antibiogrammes
             if (method_exists($prescription, 'antibiogrammes')) {
                 $prescription->antibiogrammes()->withTrashed()->update(['deleted_at' => null]);
             }
-            
+
             \Log::info('Relations restaurées avec la prescription', [
                 'prescription_id' => $prescription->id,
                 'reference' => $prescription->reference
             ]);
         });
-        
+
         // ✅ Quand une prescription est définitivement supprimée
         static::forceDeleting(function ($prescription) {
             // Utiliser la méthode forceDeleteWithRelations si elle existe

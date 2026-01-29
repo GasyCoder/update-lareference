@@ -102,7 +102,67 @@ class GestionAnalyses extends Component
 
     public function exportTab()
     {
-        session()->flash('info', 'La fonctionnalité d\'exportation est en cours de développement.');
+        $filename = 'export-analyses-' . $this->activeTab . '-' . now()->format('Y-m-d-His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $statusMap = [
+            'en_attente' => ['EN_ATTENTE'],
+            'en_cours' => ['EN_COURS'],
+            'termine' => ['TERMINE'],
+            'validees' => ['VALIDE'],
+            'a_refaire' => ['A_REFAIRE'],
+            'toutes' => ['EN_ATTENTE', 'EN_COURS', 'TERMINE'],
+        ];
+
+        $statuses = $statusMap[$this->activeTab] ?? ['EN_ATTENTE', 'EN_COURS', 'TERMINE'];
+
+        $query = $this->getBaseQuery()->whereIn('prescriptions.status', $statuses);
+
+        return response()->streamDownload(function () use ($query) {
+            $file = fopen('php://output', 'w');
+
+            // Add UTF-8 BOM for Excel
+            fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF)));
+
+            // CSV Header
+            fputcsv($file, [
+                'Référence',
+                'Date',
+                'Patient',
+                'Téléphone',
+                'Prescripteur',
+                'Statut',
+                'Analyses',
+                'Paiement',
+                'Montant'
+            ], ';');
+
+            $query->chunk(100, function ($prescriptions) use ($file) {
+                foreach ($prescriptions as $p) {
+                    $paiement = $p->paiements->first();
+                    $statutPaiement = $p->paiements->where('status', 1)->isNotEmpty() ? 'Payé' : 'Non Payé';
+                    $montant = $paiement ? $paiement->montant : 0;
+
+                    fputcsv($file, [
+                        $p->reference,
+                        $p->created_at->format('d/m/Y H:i'),
+                        ($p->patient->nom ?? '') . ' ' . ($p->patient->prenom ?? ''),
+                        $p->patient->telephone ?? '',
+                        'Dr. ' . ($p->prescripteur->nom ?? ''),
+                        $p->status,
+                        $p->analyses_count,
+                        $statutPaiement,
+                        $montant
+                    ], ';');
+                }
+            });
+
+            fclose($file);
+        }, $filename, $headers);
     }
 
     // =====================================

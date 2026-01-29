@@ -16,7 +16,7 @@ class IndexTechnicien extends Component
 
     // Propriétés de navigation (nouvelles)
     public $activeTab = 'en_attente';
-    
+
     // Propriétés de recherche et filtres (adaptées)
     public $search = '';
     public $dateFilter = '';
@@ -25,7 +25,7 @@ class IndexTechnicien extends Component
     public $prioriteFilter = '';
     public $ageFilter = '';
     public $showAdvancedFilters = false;
-    
+
     // Propriétés de tri (existantes)
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
@@ -92,50 +92,50 @@ class IndexTechnicien extends Component
     {
         try {
             DB::beginTransaction();
-            
+
             $prescription = Prescription::findOrFail($prescriptionId);
-            
+
             if ($prescription->status !== 'EN_ATTENTE') {
                 session()->flash('error', 'Cette prescription ne peut pas être traitée.');
                 DB::rollBack();
                 return;
             }
-            
+
             // Changer le statut à EN_COURS
             $prescription->update([
                 'status' => 'EN_COURS',
                 'technicien_id' => Auth::id(),
                 'date_debut_traitement' => now()
             ]);
-            
+
             // ✅ AJOUTEZ CETTE LIGNE
             DB::table('prescription_analyse')
                 ->where('prescription_id', $prescriptionId)
                 ->update(['status' => 'EN_COURS', 'updated_at' => now()]);
-            
+
             Log::info('Prescription passée en cours', [
                 'prescription_id' => $prescriptionId,
                 'reference' => $prescription->reference,
                 'user_id' => Auth::id(),
             ]);
-            
+
             DB::commit();
-            
+
             // Message de succès
             session()->flash('message', 'Traitement de la prescription ' . $prescription->reference . ' commencé.');
-            
+
             // Redirection vers la page de traitement
             return redirect()->route('technicien.prescription.show', $prescription);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Erreur lors du démarrage de l\'analyse', [
                 'prescription_id' => $prescriptionId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             session()->flash('error', 'Erreur lors du démarrage de l\'analyse : ' . $e->getMessage());
         }
     }
@@ -144,22 +144,22 @@ class IndexTechnicien extends Component
     {
         try {
             $prescription = Prescription::findOrFail($prescriptionId);
-            
+
             // Vérifier que la prescription est bien en cours
             if ($prescription->status !== 'EN_COURS') {
                 session()->flash('error', 'Cette prescription ne peut pas être continuée.');
                 return;
             }
-            
+
             // Redirection vers la page de traitement
             return redirect()->route('technicien.prescription.show', $prescription);
-            
+
         } catch (\Exception $e) {
             Log::error('Erreur lors de la continuation de l\'analyse', [
                 'prescription_id' => $prescriptionId,
                 'error' => $e->getMessage(),
             ]);
-            
+
             session()->flash('error', 'Erreur lors de la continuation de l\'analyse : ' . $e->getMessage());
         }
     }
@@ -211,8 +211,57 @@ class IndexTechnicien extends Component
 
     public function exportData()
     {
-        $fileName = 'analyses_' . $this->activeTab . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
-        session()->flash('message', 'Export des données en cours...');
+        $filename = 'export-technicien-' . $this->activeTab . '-' . now()->format('Y-m-d-His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $query = $this->getBaseQuery();
+
+        // Filter by tab
+        switch ($this->activeTab) {
+            case 'en_attente':
+                $query->whereIn('status', ['EN_ATTENTE', 'EN_COURS']);
+                break;
+            case 'termine':
+                $query->where('status', 'TERMINE');
+                break;
+            case 'a_refaire':
+                $query->where('status', 'A_REFAIRE');
+                break;
+        }
+
+        return response()->streamDownload(function () use ($query) {
+            $file = fopen('php://output', 'w');
+            fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM
+
+            fputcsv($file, [
+                'Référence',
+                'Patient',
+                'Prescripteur',
+                'Statut',
+                'Analyses',
+                'Date Création'
+            ], ';');
+
+            $query->chunk(100, function ($prescriptions) use ($file) {
+                foreach ($prescriptions as $p) {
+                    $analysesList = $p->analyses->pluck('designation')->implode(', ');
+                    fputcsv($file, [
+                        $p->reference,
+                        ($p->patient->nom ?? '') . ' ' . ($p->patient->prenom ?? ''),
+                        'Dr. ' . ($p->prescripteur->nom ?? ''),
+                        $p->status,
+                        $analysesList,
+                        $p->created_at->format('d/m/Y H:i')
+                    ], ';');
+                }
+            });
+
+            fclose($file);
+        }, $filename, $headers);
     }
 
     public function handlePrescriptionUpdate($prescriptionId)
@@ -252,7 +301,7 @@ class IndexTechnicien extends Component
                         break;
                     case 'this_month':
                         $q->whereMonth('created_at', now()->month)
-                          ->whereYear('created_at', now()->year);
+                            ->whereYear('created_at', now()->year);
                         break;
                 }
             });
@@ -288,13 +337,13 @@ class IndexTechnicien extends Component
             'en_attente' => Prescription::where('status', 'EN_ATTENTE')->count(),
             'en_cours' => Prescription::where('status', 'EN_COURS')->count(),
             'termine' => Prescription::where('status', 'TERMINE')->count(),
-            'a_refaire'=> Prescription::where('status', 'A_REFAIRE')->count(),
+            'a_refaire' => Prescription::where('status', 'A_REFAIRE')->count(),
         ];
-        
+
         // Pour l'onglet "En attente" on combine EN_ATTENTE + EN_COURS
         $stats['toutes'] = $stats['en_attente'] + $stats['en_cours'];
         $stats['total'] = array_sum($stats);
-        
+
         return $stats;
     }
 

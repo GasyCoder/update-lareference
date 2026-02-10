@@ -52,7 +52,7 @@ class Resultat extends Model
             $this->attributes['resultats'] = null;
             return;
         }
-        
+
         if (is_array($value)) {
             $this->attributes['resultats'] = json_encode($value, JSON_UNESCAPED_UNICODE);
         } else {
@@ -68,11 +68,11 @@ class Resultat extends Model
         if (is_null($value)) {
             return null;
         }
-        
+
         if (is_string($value) && $this->isJson($value)) {
             return json_decode($value, true);
         }
-        
+
         return $value;
     }
 
@@ -80,92 +80,93 @@ class Resultat extends Model
     // RELATIONS
     // ============================================
 
-    public function prescription() 
-    { 
-        return $this->belongsTo(Prescription::class); 
+    public function prescription()
+    {
+        return $this->belongsTo(Prescription::class);
     }
 
-    public function analyse() 
-    { 
-        return $this->belongsTo(Analyse::class); 
+    public function analyse()
+    {
+        return $this->belongsTo(Analyse::class);
     }
 
-    public function tube() 
-    { 
-        return $this->belongsTo(Tube::class); 
+    public function tube()
+    {
+        return $this->belongsTo(Tube::class);
     }
 
-    public function validatedBy() 
-    { 
-        return $this->belongsTo(User::class, 'validated_by'); 
+    public function validatedBy()
+    {
+        return $this->belongsTo(User::class, 'validated_by');
     }
 
-    public function famille() 
-    { 
-        return $this->belongsTo(BacterieFamille::class, 'famille_id'); 
+    public function famille()
+    {
+        return $this->belongsTo(BacterieFamille::class, 'famille_id');
     }
 
-    public function bacterie() 
-    { 
-        return $this->belongsTo(Bacterie::class, 'bacterie_id'); 
+    public function bacterie()
+    {
+        return $this->belongsTo(Bacterie::class, 'bacterie_id');
     }
 
     // ============================================
     // SCOPES
     // ============================================
 
-    public function scopeStatus($q, $s) 
-    { 
-        return $q->where('status', $s); 
+    public function scopeStatus($q, $s)
+    {
+        return $q->where('status', $s);
     }
 
-    public function scopeValides($q) 
-    { 
-        return $q->where('status', 'VALIDE'); 
+    public function scopeValides($q)
+    {
+        return $q->where('status', 'VALIDE');
     }
 
-    public function scopeEnCours($q) 
-    { 
-        return $q->where('status', 'EN_COURS'); 
+    public function scopeEnCours($q)
+    {
+        return $q->where('status', 'EN_COURS');
     }
 
-    public function scopeEnAttente($q) 
-    { 
-        return $q->where('status', 'EN_ATTENTE'); 
+    public function scopeEnAttente($q)
+    {
+        return $q->where('status', 'EN_ATTENTE');
     }
 
-    public function scopeTermines($q) 
-    { 
-        return $q->where('status', 'TERMINE'); 
+    public function scopeTermines($q)
+    {
+        return $q->where('status', 'TERMINE');
     }
 
-    public function scopePathologiques($q) 
-    { 
-        return $q->where('interpretation', 'PATHOLOGIQUE'); 
+    public function scopePathologiques($q)
+    {
+        return $q->where('interpretation', 'PATHOLOGIQUE');
     }
 
-    public function scopeNormaux($q) 
-    { 
-        return $q->where('interpretation', 'NORMAL'); 
+    public function scopeNormaux($q)
+    {
+        return $q->where('interpretation', 'NORMAL');
     }
 
     // ============================================
     // ACCESSORS EXISTANTS
     // ============================================
 
-    public function getEstValideAttribute() 
-    { 
-        return $this->status === 'VALIDE'; 
+    public function getEstValideAttribute()
+    {
+        return $this->status === 'VALIDE';
     }
 
-    public function getEstPathologiqueAttribute() 
-    { 
-        return $this->interpretation === 'PATHOLOGIQUE'; 
+    public function getEstPathologiqueAttribute()
+    {
+        return $this->interpretation === 'PATHOLOGIQUE';
     }
 
     public function getValeurFormateeAttribute()
     {
-        if (!$this->valeur) return null;
+        if (!$this->valeur)
+            return null;
         $unite = $this->analyse?->unite ?? '';
         $suffixe = $this->analyse?->suffixe ?? '';
         return trim($this->valeur . ' ' . $unite . ' ' . $suffixe);
@@ -173,20 +174,20 @@ class Resultat extends Model
 
     public function getStatutCouleurAttribute()
     {
-        return match($this->status) {
+        return match ($this->status) {
             'EN_ATTENTE' => 'gray',
-            'EN_COURS'   => 'blue',
-            'TERMINE'    => 'orange',
-            'VALIDE'     => 'green',
-            'A_REFAIRE'  => 'red',
-            'ARCHIVE'    => 'gray',
-            default      => 'gray',
+            'EN_COURS' => 'blue',
+            'TERMINE' => 'orange',
+            'VALIDE' => 'green',
+            'A_REFAIRE' => 'red',
+            'ARCHIVE' => 'gray',
+            default => 'gray',
         };
     }
 
     public function getInterpretationCouleurAttribute()
     {
-        return match($this->interpretation) {
+        return match ($this->interpretation) {
             'NORMAL' => 'green',
             'PATHOLOGIQUE' => 'red',
             default => 'gray'
@@ -209,12 +210,12 @@ class Resultat extends Model
         // Si c'est du JSON, le décoder
         if ($this->isJson($this->valeur)) {
             $decoded = json_decode($this->valeur, true);
-            
+
             // Cas spécial pour les leucocytes
             if (isset($decoded['valeur'])) {
                 return $decoded['valeur'] . ' /mm³';
             }
-            
+
             return $decoded;
         }
 
@@ -279,129 +280,131 @@ class Resultat extends Model
     /**
      * Obtenir la valeur d'affichage complète pour PDF
      */
-public function getDisplayValuePdfAttribute()
-{
-    if (!$this->valeur && !$this->resultats) {
-        return '';
-    }
-
-    $displayValue = '';
-
-    // Gestion des types GERME et CULTURE
-    if ($this->isGermeType() || $this->isCultureType()) {
-        $selectedOptions = $this->resultats_pdf ?? $this->resultats;
-        $autreValeur = $this->valeur;
-
-        if (is_array($selectedOptions)) {
-            $formattedOptions = array_map(function($option) use ($autreValeur) {
-                if ($option === 'Autre' && $autreValeur) {
-                    return '<i>' . e($autreValeur) . '</i>';
-                }
-                return ucfirst(str_replace('-', ' ', $option));
-            }, $selectedOptions);
-            $displayValue = implode(', ', $formattedOptions);
-        } elseif ($selectedOptions) {
-            $displayValue = e($selectedOptions);
-        } elseif ($autreValeur) {
-            $displayValue = '<i>' . e($autreValeur) . '</i>';
-        }
-    }
-    // Gestion des LEUCOCYTES
-    elseif ($this->isLeucocytesType()) {
-        $leucoData = $this->leucocytes_data;
-        if ($leucoData && isset($leucoData['valeur'])) {
-            $displayValue = $leucoData['valeur'] . ' /mm³';
-        }
-    }
-    // Gestion des autres types
-    else {
-        $analyseType = $this->analyse->type->name ?? '';
-
-        switch ($analyseType) {
-            case 'INPUT':
-            case 'DOSAGE':
-            case 'COMPTAGE':
-            case 'INPUT_SUFFIXE':
-                $displayValue = $this->valeur ?? '';
-                break;
-
-            case 'SELECT':
-            case 'TEST':
-                $displayValue = $this->resultats ?? $this->valeur ?? '';
-                break;
-
-            case 'SELECT_MULTIPLE':
-                $resultatsArray = $this->resultats_pdf ?? $this->resultats;
-                $displayValue = is_array($resultatsArray) ? implode(', ', $resultatsArray) : ($resultatsArray ?? '');
-                break;
-
-            case 'NEGATIF_POSITIF_1':
-                $displayValue = $this->valeur ?? '';
-                break;
-
-            case 'NEGATIF_POSITIF_2':
-                $displayValue = $this->valeur ?? '';
-                if ($this->valeur === 'POSITIF' && $this->resultats) {
-                    $displayValue .= ' (' . (is_array($this->resultats) ? implode(', ', $this->resultats) : $this->resultats) . ')';
-                }
-                break;
-
-            case 'NEGATIF_POSITIF_3':
-                $displayValue = $this->valeur ?? '';
-                if ($this->resultats) {
-                    $resultatsStr = is_array($this->resultats) ? implode(', ', $this->resultats) : $this->resultats;
-                    $displayValue .= ' (' . $resultatsStr . ')';
-                }
-                break;
-
-            case 'ABSENCE_PRESENCE_2':
-                $displayValue = $this->valeur ?? '';
-                if ($this->resultats) {
-                    $displayValue .= ' (' . (is_array($this->resultats) ? implode(', ', $this->resultats) : $this->resultats) . ')';
-                }
-                break;
-
-            case 'FV':
-                $displayValue = $this->resultats ?? '';
-                if ($this->valeur && in_array($this->resultats, [
-                    'Flore vaginale équilibrée',
-                    'Flore vaginale intermédiaire',
-                    'Flore vaginale déséquilibrée'
-                ])) {
-                    $displayValue .= ' (Score de Nugent: ' . $this->valeur . ')';
-                } elseif ($this->resultats === 'Autre' && $this->valeur) {
-                    $displayValue = $this->valeur;
-                }
-                break;
-
-            case 'LABEL':
-                $displayValue = '';
-                break;
-
-            default:
-                $displayValue = is_array($this->resultats) ? implode(', ', $this->resultats) : ($this->resultats ?? $this->valeur ?? '');
-                if ($this->resultats === 'Autre' && $this->valeur) {
-                    $displayValue = $this->valeur;
-                }
-                break;
+    public function getDisplayValuePdfAttribute()
+    {
+        if (!$this->valeur && !$this->resultats) {
+            return '';
         }
 
-        // Ajout des unités et suffixes
-        if ($displayValue && $this->analyse && $this->analyse->unite && !str_contains($displayValue, $this->analyse->unite)) {
-            $displayValue .= ' ' . $this->analyse->unite;
-        }
-        if ($displayValue && $this->analyse && $this->analyse->suffixe && !str_contains($displayValue, $this->analyse->suffixe)) {
-            $displayValue .= ' ' . $this->analyse->suffixe;
-        }
-    }
+        $displayValue = '';
 
-    // Formatage pour les résultats pathologiques
-    if ($this->est_pathologique && $displayValue) {
-        $displayValue = '<strong>' . $displayValue . '</strong>';
-    }
+        // Gestion des types GERME et CULTURE
+        if ($this->isGermeType() || $this->isCultureType()) {
+            $selectedOptions = $this->resultats_pdf ?? $this->resultats;
+            $autreValeur = $this->valeur;
 
-    return $displayValue;
-}
+            if (is_array($selectedOptions)) {
+                $formattedOptions = array_map(function ($option) use ($autreValeur) {
+                    if ($option === 'Autre' && $autreValeur) {
+                        return '<i>' . e($autreValeur) . '</i>';
+                    }
+                    return ucfirst(str_replace('-', ' ', $option));
+                }, $selectedOptions);
+                $displayValue = implode(', ', $formattedOptions);
+            } elseif ($selectedOptions) {
+                $displayValue = e($selectedOptions);
+            } elseif ($autreValeur) {
+                $displayValue = '<i>' . e($autreValeur) . '</i>';
+            }
+        }
+        // Gestion des LEUCOCYTES
+        elseif ($this->isLeucocytesType()) {
+            $leucoData = $this->leucocytes_data;
+            if ($leucoData && isset($leucoData['valeur'])) {
+                $displayValue = $leucoData['valeur'] . ' /mm³';
+            }
+        }
+        // Gestion des autres types
+        else {
+            $analyseType = $this->analyse->type->name ?? '';
+
+            switch ($analyseType) {
+                case 'INPUT':
+                case 'DOSAGE':
+                case 'COMPTAGE':
+                case 'INPUT_SUFFIXE':
+                    $displayValue = $this->valeur ?? '';
+                    break;
+
+                case 'SELECT':
+                case 'TEST':
+                    $displayValue = $this->resultats ?? $this->valeur ?? '';
+                    break;
+
+                case 'SELECT_MULTIPLE':
+                    $resultatsArray = $this->resultats_pdf ?? $this->resultats;
+                    $displayValue = is_array($resultatsArray) ? implode(', ', $resultatsArray) : ($resultatsArray ?? '');
+                    break;
+
+                case 'NEGATIF_POSITIF_1':
+                    $displayValue = $this->valeur ?? '';
+                    break;
+
+                case 'NEGATIF_POSITIF_2':
+                    $displayValue = $this->valeur ?? '';
+                    if ($this->valeur === 'POSITIF' && $this->resultats) {
+                        $displayValue .= ' (' . (is_array($this->resultats) ? implode(', ', $this->resultats) : $this->resultats) . ')';
+                    }
+                    break;
+
+                case 'NEGATIF_POSITIF_3':
+                    $displayValue = $this->valeur ?? '';
+                    if ($this->resultats) {
+                        $resultatsStr = is_array($this->resultats) ? implode(', ', $this->resultats) : $this->resultats;
+                        $displayValue .= ' (' . $resultatsStr . ')';
+                    }
+                    break;
+
+                case 'ABSENCE_PRESENCE_2':
+                    $displayValue = $this->valeur ?? '';
+                    if ($this->resultats) {
+                        $displayValue .= ' (' . (is_array($this->resultats) ? implode(', ', $this->resultats) : $this->resultats) . ')';
+                    }
+                    break;
+
+                case 'FV':
+                    $displayValue = $this->resultats ?? '';
+                    if (
+                        $this->valeur && in_array($this->resultats, [
+                            'Flore vaginale équilibrée',
+                            'Flore vaginale intermédiaire',
+                            'Flore vaginale déséquilibrée'
+                        ])
+                    ) {
+                        $displayValue .= ' (Score de Nugent: ' . $this->valeur . ')';
+                    } elseif ($this->resultats === 'Autre' && $this->valeur) {
+                        $displayValue = $this->valeur;
+                    }
+                    break;
+
+                case 'LABEL':
+                    $displayValue = '';
+                    break;
+
+                default:
+                    $displayValue = is_array($this->resultats) ? implode(', ', $this->resultats) : ($this->resultats ?? $this->valeur ?? '');
+                    if ($this->resultats === 'Autre' && $this->valeur) {
+                        $displayValue = $this->valeur;
+                    }
+                    break;
+            }
+
+            // Ajout des unités et suffixes
+            if ($displayValue && $this->analyse && $this->analyse->unite && !str_contains($displayValue, $this->analyse->unite)) {
+                $displayValue .= ' ' . $this->analyse->unite;
+            }
+            if ($displayValue && $this->analyse && $this->analyse->suffixe && !str_contains($displayValue, $this->analyse->suffixe)) {
+                $displayValue .= ' ' . $this->analyse->suffixe;
+            }
+        }
+
+        // Formatage pour les résultats pathologiques
+        if ($this->est_pathologique && $displayValue) {
+            $displayValue = '<strong>' . $displayValue . '</strong>';
+        }
+
+        return $displayValue;
+    }
 
     // ============================================
     // MÉTHODES DE VÉRIFICATION TYPE
@@ -451,7 +454,7 @@ public function getDisplayValuePdfAttribute()
         if (!is_string($string)) {
             return false;
         }
-        
+
         json_decode($string);
         return json_last_error() === JSON_ERROR_NONE;
     }
@@ -472,7 +475,7 @@ public function getDisplayValuePdfAttribute()
         if (is_null($json) || !is_string($json)) {
             return $json;
         }
-        
+
         return json_decode($json, true, 512, JSON_THROW_ON_ERROR);
     }
 
@@ -489,34 +492,41 @@ public function getDisplayValuePdfAttribute()
         ]);
     }
 
-    public function terminer() 
-    { 
-        $this->update(['status' => 'TERMINE']); 
+    public function terminer()
+    {
+        $this->update(['status' => 'TERMINE']);
     }
 
-    public function marquerARefaire() 
-    { 
-        $this->update(['status' => 'A_REFAIRE']); 
+    public function marquerARefaire()
+    {
+        $this->update(['status' => 'A_REFAIRE']);
     }
 
     public function estDansIntervalle()
     {
-        if (!$this->valeur || !($this->analyse?->valeur_ref)) return null;
-        $valeurRef = $this->analyse->valeur_ref;
+        if (!$this->valeur || !$this->analyse)
+            return null;
+
+        $patient = $this->prescription?->patient;
+        $valeurRef = $this->analyse->getValeurReferenceByPatient($patient);
+
+        if (!$valeurRef)
+            return null;
+
         $valeur = (float) $this->valeur;
 
         if (preg_match('/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/', $valeurRef, $m)) {
-            $min = (float) $m[1]; 
+            $min = (float) $m[1];
             $max = (float) $m[2];
             return $valeur >= $min && $valeur <= $max;
         }
-        if (preg_match('/<\s*(\d+\.?\d*)/', $valeurRef, $m)) { 
-            $max = (float) $m[1]; 
-            return $valeur < $max; 
+        if (preg_match('/<\s*(\d+\.?\d*)/', $valeurRef, $m)) {
+            $max = (float) $m[1];
+            return $valeur < $max;
         }
-        if (preg_match('/>\s*(\d+\.?\d*)/', $valeurRef, $m)) { 
-            $min = (float) $m[1]; 
-            return $valeur > $min; 
+        if (preg_match('/>\s*(\d+\.?\d*)/', $valeurRef, $m)) {
+            $min = (float) $m[1];
+            return $valeur > $min;
         }
 
         return null;
@@ -525,8 +535,10 @@ public function getDisplayValuePdfAttribute()
     public function interpreterAutomatiquement()
     {
         $ok = $this->estDansIntervalle();
-        if ($ok === true)  $this->update(['interpretation' => 'NORMAL']);
-        if ($ok === false) $this->update(['interpretation' => 'PATHOLOGIQUE']);
+        if ($ok === true)
+            $this->update(['interpretation' => 'NORMAL']);
+        if ($ok === false)
+            $this->update(['interpretation' => 'PATHOLOGIQUE']);
     }
 
     // ============================================
@@ -536,11 +548,11 @@ public function getDisplayValuePdfAttribute()
     public static function statistiques()
     {
         return [
-            'total'         => static::count(),
-            'en_attente'    => static::enAttente()->count(),
-            'en_cours'      => static::enCours()->count(),
-            'termines'      => static::termines()->count(),
-            'valides'       => static::valides()->count(),
+            'total' => static::count(),
+            'en_attente' => static::enAttente()->count(),
+            'en_cours' => static::enCours()->count(),
+            'termines' => static::termines()->count(),
+            'valides' => static::valides()->count(),
             'pathologiques' => static::pathologiques()->count(),
         ];
     }
@@ -572,12 +584,12 @@ public function getDisplayValuePdfAttribute()
         if (!$this->anteriorite) {
             return null;
         }
-        
+
         $texte = $this->anteriorite;
         if ($this->anteriorite_date) {
             $texte .= ' (' . $this->anteriorite_date->format('d/m/Y') . ')';
         }
-        
+
         return $texte;
     }
 
@@ -586,15 +598,15 @@ public function getDisplayValuePdfAttribute()
         if (!$this->anteriorite || !$this->valeur) {
             return null;
         }
-        
+
         // Tentative de comparaison numérique
         $valeurActuelle = $this->extraireValeurNumerique($this->valeur);
         $valeurAncienne = $this->extraireValeurNumerique($this->anteriorite);
-        
+
         if ($valeurActuelle !== null && $valeurAncienne !== null) {
             $difference = $valeurActuelle - $valeurAncienne;
             $pourcentage = $valeurAncienne != 0 ? ($difference / $valeurAncienne) * 100 : 0;
-            
+
             return [
                 'valeur_actuelle' => $valeurActuelle,
                 'valeur_ancienne' => $valeurAncienne,
@@ -603,7 +615,7 @@ public function getDisplayValuePdfAttribute()
                 'tendance' => $difference > 0 ? 'hausse' : ($difference < 0 ? 'baisse' : 'stable')
             ];
         }
-        
+
         return null;
     }
 
@@ -612,14 +624,15 @@ public function getDisplayValuePdfAttribute()
      */
     private function extraireValeurNumerique(?string $valeur): ?float
     {
-        if (!$valeur) return null;
-        
+        if (!$valeur)
+            return null;
+
         // Nettoyer la chaîne et extraire le premier nombre
         $pattern = '/(\d+(?:[.,]\d+)?)/';
         if (preg_match($pattern, str_replace(',', '.', $valeur), $matches)) {
             return (float) $matches[1];
         }
-        
+
         return null;
     }
 
@@ -627,19 +640,19 @@ public function getDisplayValuePdfAttribute()
     public function getDisplayValueWithAnterioriteAttribute(): string
     {
         $display = $this->getDisplayValuePdfAttribute();
-        
+
         if ($this->a_anteriorite) {
             $comparaison = $this->anteriorite_comparaison;
             if ($comparaison) {
-                $icone = match($comparaison['tendance']) {
+                $icone = match ($comparaison['tendance']) {
                     'hausse' => '↗',
-                    'baisse' => '↘', 
+                    'baisse' => '↘',
                     default => '→'
                 };
                 $display .= " {$icone}";
             }
         }
-        
+
         return $display;
     }
 }

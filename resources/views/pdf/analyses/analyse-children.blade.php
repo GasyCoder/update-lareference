@@ -55,7 +55,7 @@
                             
                             {{-- Si on a des sous-détails, fermer cette cellule et créer de nouvelles lignes --}}
                             @if(isset($leucoData['polynucleaires']) || isset($leucoData['lymphocytes']))
-                                </td><td class="col-valref">{{ $child->valeur_ref ?? '' }}</td><td class="col-anteriorite">
+                                </td><td class="col-valref">{{ $child->getValeurReferenceByPatient($prescription->patient ?? null) ?? '' }}</td><td class="col-anteriorite">
                                 @if($resultat && isset($resultat->antecedent))
                                     {{ $resultat->antecedent }}
                                 @endif
@@ -209,7 +209,7 @@
                 @endif
             </td>
             <td class="col-valref">
-                {{ $child->valeur_ref ?? '' }}
+                {{ $child->getValeurReferenceByPatient($prescription->patient ?? null) ?? '' }}
             </td>
             <td class="col-anteriorite">
                 @if($resultat && isset($resultat->antecedent))

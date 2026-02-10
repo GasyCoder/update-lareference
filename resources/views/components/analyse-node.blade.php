@@ -11,56 +11,8 @@
     $path = "results.{$node->id}";
     $get = fn($k,$d=null)=> data_get($results, "{$node->id}.{$k}", $d);
     
-    // Fonction pour obtenir la valeur de référence selon le genre du patient
-    $getValeurReference = function() use ($node, $patient) {
-        if (!$patient) return $node->valeur_ref;
-        
-        $civilite = strtolower($patient->civilite ?? '');
-        
-        switch ($civilite) {
-            case 'monsieur':
-                return $node->valeur_ref_homme ?: $node->valeur_ref;
-            case 'madame':
-                return $node->valeur_ref_femme ?: $node->valeur_ref;
-            case 'enfant (garçon)':
-            case 'enfant garçon':
-            case 'garçon':
-                return $node->valeur_ref_enfant_garcon ?: $node->valeur_ref;
-            case 'enfant (fille)':
-            case 'enfant fille':
-            case 'fille':
-                return $node->valeur_ref_enfant_fille ?: $node->valeur_ref;
-            default:
-                return $node->valeur_ref;
-        }
-    };
-    
-    // Fonction pour obtenir le label de la valeur de référence
-    $getValeurReferenceLabel = function() use ($patient) {
-        if (!$patient) return 'Référence';
-        
-        $civilite = strtolower($patient->civilite ?? '');
-        
-        switch ($civilite) {
-            case 'monsieur':
-                return 'Référence (Homme)';
-            case 'madame':
-                return 'Référence (Femme)';
-            case 'enfant (garçon)':
-            case 'enfant garçon':
-            case 'garçon':
-                return 'Référence (Garçon)';
-            case 'enfant (fille)':
-            case 'enfant fille':
-            case 'fille':
-                return 'Référence (Fille)';
-            default:
-                return 'Référence';
-        }
-    };
-    
-    $valeurRef = $getValeurReference();
-    $labelValeurRef = $getValeurReferenceLabel();
+    $valeurRef = $node->getValeurReferenceByPatient($patient);
+    $labelValeurRef = $node->getLabelValeurReferenceByPatient($patient);
 @endphp
 
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm p-6 mb-4 hover:shadow-md transition-shadow duration-200">

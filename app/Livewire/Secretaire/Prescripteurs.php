@@ -212,19 +212,31 @@ class Prescripteurs extends Component
     {
         try {
             if ($this->prescripteurToDelete) {
-                if ($this->prescripteurToDelete->prescriptions()->count() > 0) {
-                    $this->prescripteurToDelete->delete();
-                    flash()->warning('Prescripteur archivé avec succès (prescriptions existantes).');
+                $prescripteurNom = $this->prescripteurToDelete->nom_complet;
+                $prescriptionsCount = $this->prescripteurToDelete->prescriptions()->count();
+
+                // Toujours faire un soft delete (déplacer vers la corbeille)
+                // Cela permet de récupérer le prescripteur si nécessaire
+                $this->prescripteurToDelete->delete();
+
+                if ($prescriptionsCount > 0) {
+                    flash()->success("Prescripteur « {$prescripteurNom} » déplacé vers la corbeille ({$prescriptionsCount} prescription(s) associée(s)).");
                 } else {
-                    $this->prescripteurToDelete->forceDelete();
-                    flash()->success('Prescripteur supprimé définitivement avec succès.');
+                    flash()->success("Prescripteur « {$prescripteurNom} » déplacé vers la corbeille.");
                 }
 
                 $this->showDeleteModal = false;
                 $this->prescripteurToDelete = null;
             }
         } catch (\Exception $e) {
-            flash()->error('Impossible de supprimer ce prescripteur.');
+            \Log::error('Erreur lors de la suppression du prescripteur', [
+                'prescripteur_id' => $this->prescripteurToDelete?->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            flash()->error('Impossible de supprimer ce prescripteur : ' . $e->getMessage());
+            $this->showDeleteModal = false;
         }
     }
 

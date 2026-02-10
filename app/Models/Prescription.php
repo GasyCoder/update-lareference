@@ -539,9 +539,10 @@ class Prescription extends Model
             // Soft delete tous les tubes
             $prescription->tubes()->update(['deleted_at' => now()]);
 
-            // Soft delete tous les antibiogrammes
+            // ✅ CORRECTION: Supprimer définitivement les antibiogrammes (pas de soft delete)
+            // La table antibiogrammes n'a pas de colonne deleted_at
             if (method_exists($prescription, 'antibiogrammes')) {
-                $prescription->antibiogrammes()->update(['deleted_at' => now()]);
+                $prescription->antibiogrammes()->delete();
             }
 
             \Log::info('Relations soft deleted avec la prescription', [
@@ -561,10 +562,9 @@ class Prescription extends Model
             // Restaurer tous les tubes
             $prescription->tubes()->withTrashed()->update(['deleted_at' => null]);
 
-            // Restaurer tous les antibiogrammes
-            if (method_exists($prescription, 'antibiogrammes')) {
-                $prescription->antibiogrammes()->withTrashed()->update(['deleted_at' => null]);
-            }
+            // ✅ CORRECTION: Les antibiogrammes sont supprimés définitivement lors du soft delete
+            // Ils ne peuvent pas être restaurés automatiquement
+            // Note: Si nécessaire, ils devront être recréés manuellement
 
             \Log::info('Relations restaurées avec la prescription', [
                 'prescription_id' => $prescription->id,

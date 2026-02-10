@@ -72,9 +72,9 @@ class EditPrescription extends Component
         $this->prescriptionId = $prescriptionId;
         $this->loadPrescription();
         $this->validateEtape();
-        
+
         $this->chargerSettingsRemise();
-        
+
         $this->calculerTotaux();
         $this->isEditMode = true;
     }
@@ -88,8 +88,8 @@ class EditPrescription extends Component
     public function getMethodesPaiementProperty()
     {
         return PaymentMethod::where('is_active', true)
-                        ->orderBy('display_order')
-                        ->get();
+            ->orderBy('display_order')
+            ->get();
     }
 
     public function getTitle()
@@ -110,7 +110,11 @@ class EditPrescription extends Component
     private function loadPrescription()
     {
         $this->prescription = Prescription::with([
-            'patient', 'analyses', 'prelevements', 'paiements.paymentMethod', 'tubes'
+            'patient',
+            'analyses',
+            'prelevements',
+            'paiements.paymentMethod',
+            'tubes'
         ])->findOrFail($this->prescriptionId);
 
         // PATIENT
@@ -170,12 +174,12 @@ class EditPrescription extends Component
             $this->paiementStatut = $lastPaiement->status ?? true;
         } else {
             $premiereMethode = PaymentMethod::where('is_active', true)
-                                           ->orderBy('display_order')
-                                           ->first();
+                ->orderBy('display_order')
+                ->first();
             $this->modePaiement = $premiereMethode?->code ?? 'ESPECES';
             $this->paiementStatut = true;
         }
-        
+
         $this->montantPaye = $lastPaiement ? $lastPaiement->montant : 0;
         $this->remise = $this->prescription->remise ?? 0;
         $this->total = $this->prescription->paiements()->sum('montant') ?? 0;
@@ -198,7 +202,8 @@ class EditPrescription extends Component
     private function validateEtape()
     {
         $etapesValides = ['patient', 'clinique', 'analyses', 'prelevements', 'paiement', 'tubes', 'confirmation'];
-        if (!in_array($this->etape, $etapesValides)) $this->etape = 'patient';
+        if (!in_array($this->etape, $etapesValides))
+            $this->etape = 'patient';
     }
 
     public function allerEtape(string $etape)
@@ -214,14 +219,22 @@ class EditPrescription extends Component
     private function etapeAccessible(string $etape): bool
     {
         switch ($etape) {
-            case 'patient': return true;
-            case 'clinique': return $this->patient !== null;
-            case 'analyses': return $this->patient !== null && $this->prescripteurId !== null;
-            case 'prelevements': return !empty($this->analysesPanier);
-            case 'paiement': return !empty($this->analysesPanier);
-            case 'tubes': return $this->total > 0 && !empty($this->prelevementsSelectionnes);
-            case 'confirmation': return (!empty($this->tubesGeneres) || empty($this->prelevementsSelectionnes)) || $this->etape === 'confirmation';
-            default: return false;
+            case 'patient':
+                return true;
+            case 'clinique':
+                return $this->patient !== null;
+            case 'analyses':
+                return $this->patient !== null && $this->prescripteurId !== null;
+            case 'prelevements':
+                return !empty($this->analysesPanier);
+            case 'paiement':
+                return !empty($this->analysesPanier);
+            case 'tubes':
+                return $this->total > 0 && !empty($this->prelevementsSelectionnes);
+            case 'confirmation':
+                return (!empty($this->tubesGeneres) || empty($this->prelevementsSelectionnes)) || $this->etape === 'confirmation';
+            default:
+                return false;
         }
     }
 
@@ -229,7 +242,7 @@ class EditPrescription extends Component
     {
         $this->patient = Patient::find($patientId);
         $this->nouveauPatient = false;
-        
+
         $this->nom = $this->patient->nom;
         $this->prenom = $this->patient->prenom;
         $this->civilite = $this->patient->civilite;
@@ -239,7 +252,7 @@ class EditPrescription extends Component
         flash()->success("Patient « {$this->patient->nom} {$this->patient->prenom} » sélectionné - Vous pouvez modifier ses informations");
         $this->etape = 'patient';
     }
-    
+
     public function creerNouveauPatient()
     {
         $this->nouveauPatient = true;
@@ -264,7 +277,7 @@ class EditPrescription extends Component
             'telephone.regex' => 'Format de téléphone invalide',
             'email.email' => 'Format email invalide'
         ]);
-        
+
         try {
             if ($this->patient) {
                 $this->patient->update([
@@ -275,7 +288,7 @@ class EditPrescription extends Component
                     'email' => strtolower(trim($this->email)),
                     'adresse' => trim($this->adresse),
                 ]);
-                
+
                 flash()->success("Informations du patient « {$this->patient->nom} {$this->patient->prenom} » mises à jour");
             } else {
                 $this->patient = Patient::create([
@@ -286,13 +299,13 @@ class EditPrescription extends Component
                     'email' => strtolower(trim($this->email)),
                     'adresse' => trim($this->adresse),
                 ]);
-                
+
                 flash()->success("Nouveau patient « {$this->patient->nom} {$this->patient->prenom} » créé avec succès");
             }
-            
+
             $this->nouveauPatient = false;
             $this->allerEtape('clinique');
-            
+
         } catch (\Exception $e) {
             flash()->error('Erreur lors de ' . ($this->patient ? 'la modification' : 'la création') . ' du patient: ' . $e->getMessage());
         }
@@ -323,7 +336,7 @@ class EditPrescription extends Component
             $this->patient->date_naissance = $this->dateNaissance;
             $this->patient->save();
             $this->patient->refresh();
-            
+
             Log::info('Date naissance sauvegardée', [
                 'patient_id' => $this->patient->id,
                 'date_naissance' => $this->dateNaissance
@@ -342,11 +355,11 @@ class EditPrescription extends Component
             try {
                 $dateNaissance = \Carbon\Carbon::parse($value);
                 $aujourdhui = \Carbon\Carbon::now();
-                
+
                 $diffEnJours = $dateNaissance->diffInDays($aujourdhui);
                 $diffEnMois = $dateNaissance->diffInMonths($aujourdhui);
                 $diffEnAnnees = $dateNaissance->diffInYears($aujourdhui);
-                
+
                 if ($diffEnJours < 31) {
                     $this->age = $diffEnJours;
                     $this->uniteAge = 'Jours';
@@ -357,7 +370,7 @@ class EditPrescription extends Component
                     $this->age = $diffEnAnnees;
                     $this->uniteAge = 'Ans';
                 }
-                
+
                 Log::info('Âge calculé automatiquement', [
                     'date_naissance' => $value,
                     'age' => $this->age,
@@ -384,7 +397,7 @@ class EditPrescription extends Component
 
         try {
             $analyse = Analyse::with(['parent', 'enfants'])->find($analyseId);
-            
+
             if (!$analyse) {
                 flash()->error('Analyse introuvable');
                 return;
@@ -397,7 +410,7 @@ class EditPrescription extends Component
             }
 
             $this->calculerTotaux();
-            
+
         } catch (\Exception $e) {
             flash()->error('Erreur lors de l\'ajout de l\'analyse');
             Log::error('Erreur ajout analyse', ['error' => $e->getMessage(), 'analyse_id' => $analyseId]);
@@ -441,7 +454,7 @@ class EditPrescription extends Component
         if ($analyse->enfants->count() > 0) {
             $message .= " (inclut {$analyse->enfants->count()} analyses)";
         }
-        
+
         flash()->success($message);
     }
 
@@ -548,12 +561,12 @@ class EditPrescription extends Component
 
         try {
             $prelevement = Prelevement::find($prelevementId);
-            
+
             if (!$prelevement) {
                 flash()->error('Prélèvement introuvable');
                 return;
             }
-            
+
             $this->prelevementsSelectionnes[$prelevementId] = [
                 'id' => $prelevement->id,
                 'nom' => $prelevement->denomination,
@@ -566,7 +579,7 @@ class EditPrescription extends Component
 
             $this->calculerTotaux();
             flash()->success("Prélèvement « {$prelevement->denomination} » ajouté");
-            
+
         } catch (\Exception $e) {
             flash()->error('Erreur lors de l\'ajout du prélèvement');
             Log::error('Erreur ajout prélèvement', ['error' => $e->getMessage(), 'prelevement_id' => $prelevementId]);
@@ -637,13 +650,13 @@ class EditPrescription extends Component
             }
 
             $this->total = max(0, $sousTotal + $totalPrelevements - $this->remise);
-            
+
             if ($this->montantPaye < $this->total) {
                 $this->montantPaye = $this->total;
             }
-            
+
             $this->calculerMonnaie();
-            
+
         } catch (\Exception $e) {
             Log::error('Erreur calcul totaux', ['error' => $e->getMessage()]);
             $this->total = 0;
@@ -671,13 +684,13 @@ class EditPrescription extends Component
     public function validerPaiement()
     {
         $codesMethodesActives = PaymentMethod::where('is_active', true)
-                                            ->pluck('code')
-                                            ->toArray();
-        
-        $codesValidation = !empty($codesMethodesActives) 
+            ->pluck('code')
+            ->toArray();
+
+        $codesValidation = !empty($codesMethodesActives)
             ? 'in:' . implode(',', $codesMethodesActives)
             : 'in:ESPECES,CARTE,CHEQUE,MOBILEMONEY';
-        
+
         $this->validate([
             'modePaiement' => "required|{$codesValidation}",
             'montantPaye' => 'required|numeric|min:0',
@@ -698,31 +711,31 @@ class EditPrescription extends Component
             flash()->error('Aucune analyse sélectionnée');
             return;
         }
-        
+
         $this->enregistrerPrescription();
     }
 
     public function terminerPrescription()
     {
         $this->allerEtape('confirmation');
-        
+
         $message = 'Prescription mise à jour avec succès';
-        
+
         if (!empty($this->tubesGeneres)) {
             $message .= ' - ' . count($this->tubesGeneres) . ' nouveau(x) tube(s) généré(s)';
         }
-        
+
         session()->flash('success', $message);
     }
 
     private function genererTubesPourPrescription($prescription)
     {
         $tubes = [];
-        
+
         try {
             // Utiliser la méthode statique du modèle Tube qui est déjà bien implémentée
             $tubesGeneres = Tube::genererPourPrescription($prescription->id);
-            
+
             foreach ($tubesGeneres as $tube) {
                 $tubes[] = [
                     'id' => $tube->id,
@@ -735,14 +748,14 @@ class EditPrescription extends Component
 
             // Mettre à jour le statut de la prescription
             $prescription->update(['status' => 'EN_ATTENTE']);
-            
+
             flash()->success(count($tubes) . ' tube(s) généré(s) avec succès');
-            
+
             Log::info('Tubes générés via Livewire', [
                 'prescription_id' => $prescription->id,
                 'tubes_count' => count($tubes)
             ]);
-            
+
         } catch (\Exception $e) {
             Log::error('Erreur génération tubes via Livewire', [
                 'prescription_id' => $prescription->id,
@@ -789,11 +802,11 @@ class EditPrescription extends Component
             // 2. Associer les analyses
             $analyseIds = array_keys($this->analysesPanier);
             $analysesExistantes = Analyse::whereIn('id', $analyseIds)->pluck('id')->toArray();
-            
+
             if (count($analysesExistantes) !== count($analyseIds)) {
                 throw new \Exception('Certaines analyses sélectionnées n\'existent plus');
             }
-            
+
             $this->prescription->analyses()->sync($analysesExistantes);
 
             // 3. Gérer les prélèvements via les tubes
@@ -809,7 +822,7 @@ class EditPrescription extends Component
             foreach ($this->prelevementsSelectionnes as $prelevementData) {
                 $quantite = max(1, $prelevementData['quantite'] ?? 1);
                 $prelevement = Prelevement::find($prelevementData['id']);
-                
+
                 if (!$prelevement) {
                     throw new \Exception("Prélèvement ID {$prelevementData['id']} introuvable");
                 }
@@ -837,7 +850,7 @@ class EditPrescription extends Component
             }
 
             // 4. Mettre à jour les tubes générés dans la propriété
-            $this->tubesGeneres = $tubesGeneres->map(function($tube) {
+            $this->tubesGeneres = $tubesGeneres->map(function ($tube) {
                 return [
                     'id' => $tube->id,
                     'numero_tube' => $tube->numero_tube,
@@ -851,13 +864,15 @@ class EditPrescription extends Component
 
             // 5. Enregistrer le paiement
             $paymentMethod = PaymentMethod::where('code', $this->modePaiement)->first();
-            
+
             if (!$paymentMethod) {
                 throw new \Exception('Méthode de paiement invalide: ' . $this->modePaiement);
             }
-            
-            $this->prescription->paiements()->delete();
-            
+
+            // ✅ CORRECTION: Utiliser forceDelete() pour supprimer définitivement les anciens paiements
+            // Cela évite le problème "Aucun paiement" causé par les paiements soft-deleted
+            $this->prescription->paiements()->forceDelete();
+
             Paiement::create([
                 'prescription_id' => $this->prescription->id,
                 'montant' => $this->total,
@@ -886,7 +901,7 @@ class EditPrescription extends Component
                 'prescripteur_id' => $this->prescripteurId,
                 'prescription_id' => $this->prescriptionId
             ]);
-            
+
             flash()->error('Erreur de base de données: ' . ($e->getCode() == '23000' ? 'Conflit de code-barre unique.' : $e->getMessage()));
         } catch (\Exception $e) {
             DB::rollBack();
@@ -897,7 +912,7 @@ class EditPrescription extends Component
                 'prescripteur_id' => $this->prescripteurId,
                 'prescription_id' => $this->prescriptionId
             ]);
-            
+
             flash()->error('Erreur lors de la modification: ' . $e->getMessage());
         }
     }
@@ -907,33 +922,35 @@ class EditPrescription extends Component
         if (strlen($this->recherchePatient) < 2) {
             return collect();
         }
-        
+
         $terme = trim($this->recherchePatient);
-        
-        return Patient::where(function($query) use ($terme) {
-                    $query->whereRaw('UPPER(nom) LIKE ?', ['%' . strtoupper($terme) . '%'])
-                        ->orWhereRaw('UPPER(prenom) LIKE ?', ['%' . strtoupper($terme) . '%'])
-                        ->orWhere('telephone', 'like', "%{$terme}%")
-                        ->orWhere('numero_dossier', 'like', "%{$terme}%");
-                })
-                ->orderBy('nom')
-                ->limit(10)
-                ->get();
+
+        return Patient::where(function ($query) use ($terme) {
+            $query->whereRaw('UPPER(nom) LIKE ?', ['%' . strtoupper($terme) . '%'])
+                ->orWhereRaw('UPPER(prenom) LIKE ?', ['%' . strtoupper($terme) . '%'])
+                ->orWhere('telephone', 'like', "%{$terme}%")
+                ->orWhere('numero_dossier', 'like', "%{$terme}%");
+        })
+            ->orderBy('nom')
+            ->limit(10)
+            ->get();
     }
 
     public function getCategoriesAnalysesProperty()
     {
         return Analyse::where('level', 'PARENT')
-                     ->where('status', true)
-                     ->with(['enfants' => function($query) {
-                         $query->where('status', true)
-                               ->whereIn('level', ['NORMAL', 'CHILD'])
-                               ->orderBy('ordre')
-                               ->orderBy('designation');
-                     }])
-                     ->orderBy('ordre')
-                     ->orderBy('designation')
-                     ->get();
+            ->where('status', true)
+            ->with([
+                'enfants' => function ($query) {
+                    $query->where('status', true)
+                        ->whereIn('level', ['NORMAL', 'CHILD'])
+                        ->orderBy('ordre')
+                        ->orderBy('designation');
+                }
+            ])
+            ->orderBy('ordre')
+            ->orderBy('designation')
+            ->get();
     }
 
     public function getAnalysesRechercheProperty()
@@ -947,13 +964,13 @@ class EditPrescription extends Component
         $results = collect();
 
         $parents = Analyse::where('status', true)
-                        ->where('level', 'PARENT')
-                        ->where('prix', '>', 0)
-                        ->where(function($query) use ($terme) {
-                            $query->whereRaw('UPPER(code) LIKE ?', ["%{$terme}%"])
-                                ->orWhereRaw('UPPER(designation) LIKE ?', ["%{$terme}%"]);
-                        })
-                        ->orderByRaw("
+            ->where('level', 'PARENT')
+            ->where('prix', '>', 0)
+            ->where(function ($query) use ($terme) {
+                $query->whereRaw('UPPER(code) LIKE ?', ["%{$terme}%"])
+                    ->orWhereRaw('UPPER(designation) LIKE ?', ["%{$terme}%"]);
+            })
+            ->orderByRaw("
                             CASE 
                                 WHEN UPPER(code) = ? THEN 1
                                 WHEN UPPER(code) LIKE ? THEN 2
@@ -961,17 +978,17 @@ class EditPrescription extends Component
                                 ELSE 4
                             END
                         ", [$terme, "{$terme}%", "%{$terme}%"])
-                        ->limit(10)
-                        ->get();
+            ->limit(10)
+            ->get();
 
         $individuelles = Analyse::where('status', true)
-                            ->whereIn('level', ['NORMAL', 'CHILD'])
-                            ->where(function($query) use ($terme) {
-                                $query->whereRaw('UPPER(code) LIKE ?', ["%{$terme}%"])
-                                        ->orWhereRaw('UPPER(designation) LIKE ?', ["%{$terme}%"]);
-                            })
-                            ->with('parent')
-                            ->orderByRaw("
+            ->whereIn('level', ['NORMAL', 'CHILD'])
+            ->where(function ($query) use ($terme) {
+                $query->whereRaw('UPPER(code) LIKE ?', ["%{$terme}%"])
+                    ->orWhereRaw('UPPER(designation) LIKE ?', ["%{$terme}%"]);
+            })
+            ->with('parent')
+            ->orderByRaw("
                                 CASE 
                                     WHEN UPPER(code) = ? THEN 1
                                     WHEN UPPER(code) LIKE ? THEN 2
@@ -979,8 +996,8 @@ class EditPrescription extends Component
                                     ELSE 4
                                 END
                             ", [$terme, "{$terme}%", "%{$terme}%"])
-                            ->limit(15)
-                            ->get();
+            ->limit(15)
+            ->get();
 
         $results = $parents->concat($individuelles)->take(20);
 
@@ -991,15 +1008,15 @@ class EditPrescription extends Component
     public function getPrescripteursProperty()
     {
         return Prescripteur::where('is_active', true)
-                          ->orderBy('nom')
-                          ->get();
+            ->orderBy('nom')
+            ->get();
     }
 
     public function getPrelevementsDisponiblesProperty()
     {
         return Prelevement::where('is_active', true)
-                         ->orderBy('denomination')
-                         ->get();
+            ->orderBy('denomination')
+            ->get();
     }
 
     public function getPrelevementsRechercheProperty()
@@ -1009,39 +1026,56 @@ class EditPrescription extends Component
         }
 
         return Prelevement::where('is_active', true)
-                         ->where(function($query) {
-                             $query->where('denomination', 'like', "%{$this->recherchePrelevement}%")
-                                   ->orWhere('code', 'like', "%{$this->recherchePrelevement}%");
-                         })
-                         ->orderBy('denomination')
-                         ->limit(10)
-                         ->get();
+            ->where(function ($query) {
+                $query->where('denomination', 'like', "%{$this->recherchePrelevement}%")
+                    ->orWhere('code', 'like', "%{$this->recherchePrelevement}%");
+            })
+            ->orderBy('denomination')
+            ->limit(10)
+            ->get();
     }
 
     public function nouveauPrescription()
     {
         $this->reset([
-            'patient', 'nouveauPatient', 'nom', 'prenom', 'civilite', 'telephone', 'email',
-            'dateNaissance', 'adresse', 
-            'prescripteurId', 'age', 'poids', 'renseignementClinique',
-            'analysesPanier', 'prelevementsSelectionnes', 'tubesGeneres',
-            'montantPaye', 'remise', 'total', 'monnaieRendue', 'recherchePatient', 
-            'rechercheAnalyse', 'recherchePrelevement'
+            'patient',
+            'nouveauPatient',
+            'nom',
+            'prenom',
+            'civilite',
+            'telephone',
+            'email',
+            'dateNaissance',
+            'adresse',
+            'prescripteurId',
+            'age',
+            'poids',
+            'renseignementClinique',
+            'analysesPanier',
+            'prelevementsSelectionnes',
+            'tubesGeneres',
+            'montantPaye',
+            'remise',
+            'total',
+            'monnaieRendue',
+            'recherchePatient',
+            'rechercheAnalyse',
+            'recherchePrelevement'
         ]);
-        
+
         $this->etape = 'patient';
         $this->age = 0;
         $this->uniteAge = 'Ans';
         $this->patientType = 'EXTERNE';
         $this->civilite = 'Monsieur';
-        
+
         $this->chargerSettingsRemise();
-        
+
         $premiereMethode = PaymentMethod::where('is_active', true)
-                                       ->orderBy('display_order')
-                                       ->first();
+            ->orderBy('display_order')
+            ->first();
         $this->modePaiement = $premiereMethode?->code ?? 'ESPECES';
-        
+
         $this->calculerTotaux();
 
         flash()->info('Nouvelle prescription initialisée');
@@ -1059,7 +1093,7 @@ class EditPrescription extends Component
             'Monsieur' => [
                 'label' => 'M.',
                 'emoji' => '👨',
-                'genre' => 'M', 
+                'genre' => 'M',
                 'type' => 'adulte'
             ],
             'Mademoiselle' => [

@@ -20,7 +20,8 @@
             <a href="{{ url('/') }}"
                 class="relative inline-block transition-opacity duration-300 h-9 group-[&.is-compact:not(.has-hover)]/sidebar:opacity-0">
                 <span
-                    class="text-xl font-bold text-primary-500 whitespace-nowrap group-[&.is-compact:not(.has-hover)]/sidebar:hidden">SMARTLABO
+                    class="text-xl font-bold text-primary-500 whitespace-nowrap group-[&.is-compact:not(.has-hover)]/sidebar:hidden">La
+                    Reference
                 </span>
                 <span
                     class="text-xl font-bold text-primary-500 hidden group-[&.is-compact:not(.has-hover)]/sidebar:block">L</span>
@@ -391,7 +392,7 @@
             Livewire.on('updateArchiveCount', ({ count }) => {
                 document.getElementById('archive-count').textContent = count;
             });
-            
+
             Livewire.on('updateTraceCount', ({ count }) => {
                 document.getElementById('trace-count').textContent = count;
             });

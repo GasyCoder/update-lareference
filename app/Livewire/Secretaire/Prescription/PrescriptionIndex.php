@@ -51,6 +51,7 @@ class PrescriptionIndex extends Component
 
     protected $listeners = [
         'prescriptionAdded' => '$refresh',
+        'notificationSent' => '$refresh',
     ];
 
     public function mount()
@@ -115,19 +116,19 @@ class PrescriptionIndex extends Component
             $completed = $stats->termine + $stats->valide;
 
             return [
-                'countEnAttente' => (int)$stats->en_attente,
-                'countEnCours' => (int)$stats->en_cours,
-                'countTermine' => (int)$stats->termine,
-                'countValide' => (int)$stats->valide,
-                'countArchive' => (int)$stats->archive,
-                'countDeleted' => (int)$stats->deleted,
-                'countPaye' => (int)$paymentStats->paye,
-                'countNonPaye' => (int)$paymentStats->non_paye,
+                'countEnAttente' => (int) $stats->en_attente,
+                'countEnCours' => (int) $stats->en_cours,
+                'countTermine' => (int) $stats->termine,
+                'countValide' => (int) $stats->valide,
+                'countArchive' => (int) $stats->archive,
+                'countDeleted' => (int) $stats->deleted,
+                'countPaye' => (int) $paymentStats->paye,
+                'countNonPaye' => (int) $paymentStats->non_paye,
                 'countActives' => $actives,
                 'tauxProgression' => $actives > 0 ? round(($stats->termine / $actives) * 100, 1) : 0,
                 'tauxEfficacite' => $totalGlobal > 0 ? round(($completed / $totalGlobal) * 100, 1) : 0,
-                'tauxPaiement' => ($paymentStats->paye + $paymentStats->non_paye) > 0 
-                    ? round(($paymentStats->paye / ($paymentStats->paye + $paymentStats->non_paye)) * 100, 2) 
+                'tauxPaiement' => ($paymentStats->paye + $paymentStats->non_paye) > 0
+                    ? round(($paymentStats->paye / ($paymentStats->paye + $paymentStats->non_paye)) * 100, 2)
                     : 0
             ];
         });
@@ -220,10 +221,10 @@ class PrescriptionIndex extends Component
                     $query->doesntHave('paiements');
                     break;
             }
-            
+
             // ✅ NE PAS appliquer les filtres de statut/corbeille quand un filtre de paiement est actif
             // On affiche TOUTES les prescriptions (tous statuts) qui correspondent au filtre de paiement
-            
+
         } else {
             // ✅ SINON : Appliquer les filtres normaux de statut/corbeille
             if ($trashed) {
@@ -236,13 +237,13 @@ class PrescriptionIndex extends Component
         // Recherche (toujours appliquée)
         if ($this->search) {
             $search = '%' . $this->search . '%';
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('prescriptions.reference', 'like', $search)
-                ->orWhereHas('patient', function($q) use ($search) {
-                    $q->where('nom', 'like', $search)
-                        ->orWhere('prenom', 'like', $search)
-                        ->orWhere('telephone', 'like', $search);
-                });
+                    ->orWhereHas('patient', function ($q) use ($search) {
+                        $q->where('nom', 'like', $search)
+                            ->orWhere('prenom', 'like', $search)
+                            ->orWhere('telephone', 'like', $search);
+                    });
             });
         }
 
@@ -269,10 +270,10 @@ class PrescriptionIndex extends Component
         Cache::forget('prescription_stats_v4');
         Cache::forget('prescription_stats_v5');
         Cache::forget('prescription_stats_v6'); // ✅ Nouvelle version
-        
+
         // ✅ Forcer le recalcul
         unset($this->stats);
-        
+
         // ✅ Dispatch avec les nouvelles stats
         $this->dispatch('updateCounts', $this->stats);
     }
@@ -285,10 +286,10 @@ class PrescriptionIndex extends Component
         // Vider tous les caches de stats
         Cache::forget('prescription_stats_v4');
         Cache::forget('prescription_stats_v5');
-        
+
         // Forcer le recalcul
         unset($this->stats);
-        
+
         session()->flash('success', 'Statistiques rafraîchies avec succès !');
     }
 
@@ -378,18 +379,18 @@ class PrescriptionIndex extends Component
         try {
             $paiement = Paiement::whereHas('prescription', fn($q) => $q->where('id', $prescriptionId))
                 ->first();
-            
+
             if (!$paiement) {
                 session()->flash('error', 'Aucun paiement trouvé.');
                 return;
             }
-            
+
             if ($paiement->status) {
                 $this->confirmUnpayment($prescriptionId);
             } else {
                 $this->confirmPayment($prescriptionId);
             }
-            
+
         } catch (\Exception $e) {
             Log::error('Erreur toggle paiement', ['error' => $e->getMessage()]);
             session()->flash('error', 'Erreur lors de la vérification du statut.');
@@ -418,16 +419,18 @@ class PrescriptionIndex extends Component
                 return;
             }
 
-            $paiement = Paiement::whereHas('prescription', fn($q) => 
+            $paiement = Paiement::whereHas(
+                'prescription',
+                fn($q) =>
                 $q->where('id', $this->selectedPrescriptionForPayment)
             )->firstOrFail();
-            
+
             $paiement->changerStatutPaiement(true);
-            
+
             session()->flash('success', 'Paiement marqué comme payé.');
             $this->refreshCounts();
             $this->resetModal();
-            
+
         } catch (\Exception $e) {
             Log::error('Erreur marquage paiement payé', ['error' => $e->getMessage()]);
             session()->flash('error', 'Erreur lors du marquage.');
@@ -443,16 +446,18 @@ class PrescriptionIndex extends Component
                 return;
             }
 
-            $paiement = Paiement::whereHas('prescription', fn($q) => 
+            $paiement = Paiement::whereHas(
+                'prescription',
+                fn($q) =>
                 $q->where('id', $this->selectedPrescriptionForPayment)
             )->firstOrFail();
-            
+
             $paiement->changerStatutPaiement(false);
-            
+
             session()->flash('success', 'Paiement marqué comme non payé.');
             $this->refreshCounts();
             $this->resetModal();
-            
+
         } catch (\Exception $e) {
             Log::error('Erreur marquage paiement non payé', ['error' => $e->getMessage()]);
             session()->flash('error', 'Erreur lors du marquage.');
@@ -623,7 +628,7 @@ class PrescriptionIndex extends Component
     public function render()
     {
         $stats = $this->stats;
-        
+
         return view('livewire.secretaire.prescription.prescription-index', [
             'activePrescriptions' => $this->activePrescriptions,
             'validePrescriptions' => $this->validePrescriptions,

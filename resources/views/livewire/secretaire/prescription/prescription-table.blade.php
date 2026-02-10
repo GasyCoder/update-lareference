@@ -74,26 +74,25 @@
                                 <div class="flex items-center space-x-3">
                                     <label class="relative inline-flex items-center cursor-pointer">
                                         {{-- Toggle Switch - Le clic ouvre la modale de confirmation --}}
-                                        <input type="checkbox" 
-                                            wire:click="togglePaiementStatus({{ $prescription->id }})"
-                                            class="sr-only peer"
-                                            {{ $estPaye ? 'checked' : '' }} readonly>
+                                        <input type="checkbox" wire:click="togglePaiementStatus({{ $prescription->id }})"
+                                            class="sr-only peer" {{ $estPaye ? 'checked' : '' }} readonly>
                                         <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 
-                                                    peer-checked:after:translate-x-full peer-checked:after:border-white 
-                                                    after:content-[''] after:absolute after:top-0.5 after:left-[2px] 
-                                                    after:bg-white after:border-gray-300 after:border after:rounded-full 
-                                                    after:h-5 after:w-5 after:transition-all 
-                                                    peer-checked:bg-green-600">
+                                                            peer-checked:after:translate-x-full peer-checked:after:border-white 
+                                                            after:content-[''] after:absolute after:top-0.5 after:left-[2px] 
+                                                            after:bg-white after:border-gray-300 after:border after:rounded-full 
+                                                            after:h-5 after:w-5 after:transition-all 
+                                                            peer-checked:bg-green-600">
                                         </div>
                                     </label>
-                                    
+
                                     {{-- Statut et Date --}}
                                     <div class="flex flex-col">
-                                        <span class="text-sm font-medium 
-                                            {{ $estPaye ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                        <span
+                                            class="text-sm font-medium 
+                                                    {{ $estPaye ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                                             {{ $estPaye ? 'Payé' : 'Non Payé' }}
                                         </span>
-                                        
+
                                         {{-- Date de paiement --}}
                                         @if($estPaye && $paiement->date_paiement)
                                             <span class="text-xs text-gray-500 dark:text-gray-400" title="Date de paiement">
@@ -102,12 +101,14 @@
                                         @endif
                                     </div>
                                 </div>
-                            
+
                                 {{-- Informations supplémentaires --}}
                                 @if($paiement->paymentMethod)
                                     <div class="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                                         <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"></path>
+                                            <path
+                                                d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z">
+                                            </path>
                                         </svg>
                                         <span title="Méthode de paiement">{{ $paiement->paymentMethod->label ?? 'N/A' }}</span>
                                     </div>
@@ -115,7 +116,8 @@
                             </div>
                         @else
                             <div class="flex items-center justify-center">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
                                     <span class="w-1.5 h-1.5 rounded-full mr-1.5 bg-gray-400"></span>
                                     Aucun paiement
                                 </span>
@@ -163,8 +165,8 @@
                                 </button>
                             @elseif(isset($currentTab) && $currentTab === 'valide')
                                 {{-- Actions pour les prescriptions validées --}}
-                                <a href="{{ route('laboratoire.prescription.pdf', $prescription->id) }}"
-                                    target="_blank" rel="noopener noreferrer"
+                                <a href="{{ route('laboratoire.prescription.pdf', $prescription->id) }}" target="_blank"
+                                    rel="noopener noreferrer"
                                     class="inline-flex items-center justify-center w-8 h-8 text-red-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
                                     title="Voir PDF">
                                     <em class="text-xl ni ni-file-pdf"></em>
@@ -175,6 +177,15 @@
                                     title="Archiver">
                                     <em class="ni ni-archive"></em>
                                 </button>
+
+                                {{-- Bouton Notifier --}}
+                                <button
+                                    wire:click="$dispatch('openNotificationModal', { prescriptionId: {{ $prescription->id }} })"
+                                    class="inline-flex items-center justify-center w-8 h-8 {{ $prescription->notified_at ? 'text-blue-600 bg-blue-100' : 'text-slate-600 bg-slate-100' }} rounded-lg hover:bg-blue-200 transition-colors"
+                                    title="{{ $prescription->notified_at ? 'Notifié le ' . $prescription->notified_at->format('d/m/Y') : 'Notifier le patient' }}">
+                                    <em class="ni ni-bell"></em>
+                                </button>
+
                                 <button wire:click="confirmDelete({{ $prescription->id }})"
                                     class="inline-flex items-center justify-center w-8 h-8 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
                                     title="Corbeille">

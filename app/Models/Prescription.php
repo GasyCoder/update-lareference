@@ -37,12 +37,14 @@ class Prescription extends Model
         'technicien_id',
         'date_debut_traitement',
         'date_reprise_traitement',
+        'notified_at',
     ];
 
     protected $casts = [
         'poids' => 'decimal:2',
         'remise' => 'decimal:2',
         'updated_at' => 'datetime',
+        'notified_at' => 'datetime',
     ];
 
     /**

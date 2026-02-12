@@ -519,8 +519,8 @@ class PrescriptionIndex extends Component
 
     public function confirmPermanentDelete($prescriptionId)
     {
-        if (!Auth::user()->isAdmin()) {
-            session()->flash('error', 'Seuls les administrateurs peuvent supprimer définitivement.');
+        if (!Auth::user()->hasPermission('trash.access')) {
+            session()->flash('error', 'Vous n\'avez pas la permission de supprimer définitivement.');
             return;
         }
 
@@ -531,7 +531,7 @@ class PrescriptionIndex extends Component
     public function permanentDeletePrescription()
     {
         try {
-            if (!Auth::user()->isAdmin()) {
+            if (!Auth::user()->hasPermission('trash.access')) {
                 session()->flash('error', 'Action non autorisée.');
                 return;
             }

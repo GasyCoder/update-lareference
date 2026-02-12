@@ -143,7 +143,7 @@ class Archives extends Component
 
     public function confirmPermanentDelete($prescriptionId)
     {
-        if (!Auth::user()->isAdmin()) {
+        if (!Auth::user()->hasPermission('archives.access')) {
             session()->flash('error', 'Seuls les administrateurs peuvent supprimer définitivement.');
             return;
         }
@@ -154,7 +154,7 @@ class Archives extends Component
 
     public function permanentDelete()
     {
-        if (!Auth::user()->isAdmin()) {
+        if (!Auth::user()->hasPermission('archives.access')) {
             session()->flash('error', 'Action non autorisée.');
             return;
         }
@@ -180,17 +180,18 @@ class Archives extends Component
     {
         $user = Auth::user();
 
-        if ($user->isAdmin()) {
+        // Admin peut tout faire
+        if ($user->hasPermission('archives.access')) {
             return true;
         }
 
-        if ($user->type === 'secretaire') {
-            return true;
+        // Vérifier si l'utilisateur a la permission d'accéder aux archives
+        // Tout utilisateur authentifié peut voir les archives s'il y a accès via le menu
+        // Pour les biologistes, on garde la restriction sur leurs propres prescriptions
+        if ($user->type === 'biologiste' && $prescription->prescripteur_id !== $user->id) {
+            return false;
         }
-
-        if ($user->type === 'biologiste' && $prescription->prescripteur_id === $user->id) {
-            return true;
-        }
+        return true;
 
         return false;
     }

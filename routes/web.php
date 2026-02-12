@@ -10,6 +10,7 @@ use App\Livewire\Admin\Analyses;
 use App\Livewire\Admin\Settings;
 use App\Livewire\Admin\Bacteries;
 use App\Livewire\Admin\UsersIndex;
+use App\Livewire\Admin\UserPermissions;
 use App\Livewire\Admin\Prelevements;
 use App\Livewire\Admin\TracePatient;
 use Illuminate\Support\Facades\Auth;
@@ -160,6 +161,7 @@ Route::middleware(['auth', 'verified', 'role:technicien,biologiste,admin'])->pre
 // ============================================
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('utilisateurs', UsersIndex::class)->name('users');
+    Route::get('permissions', UserPermissions::class)->name('permissions');
     Route::get('parametres', Settings::class)->name('settings');
     Route::get('trace-patients', TracePatient::class)->name('trace-patients');
 

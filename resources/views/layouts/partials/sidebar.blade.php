@@ -43,7 +43,7 @@
                             class="group-[&.is-compact:not(.has-hover)]/sidebar:opacity-0 text-slate-400 dark:text-slate-300 whitespace-nowrap uppercase font-bold text-xs tracking-relaxed leading-tight">
                             Menus</h6>
                     </li>
-                    @if(auth()->check() && auth()->user()->type === 'admin')
+                    @if(auth()->check() && (auth()->user()->isAdmin() || auth()->user()->hasPermission('dashboard.view')))
                         @php
                             $countAnalyses = \App\Models\Prescription::where('status', '!=', \App\Models\Prescription::STATUS_ARCHIVE)->count();
                         @endphp
@@ -60,6 +60,9 @@
                                     de board</span>
                             </a>
                         </li>
+                    @endif
+
+                    @if(auth()->check() && auth()->user()->hasAnyPermission(['prescriptions.view', 'analyses.view']))
                         <li
                             class="nk-menu-item py-0.5{{ request()->routeIs('admin.gestion-analyses') ? ' active' : '' }} group/item">
                             <a href="{{ route('admin.gestion-analyses') }}"
@@ -71,13 +74,14 @@
                                 </span>
                                 <span
                                     class="group-[&.is-compact:not(.has-hover)]/sidebar:opacity-0 flex-grow-1 inline-block whitespace-nowrap transition-all duration-300 text-sm text-slate-600 dark:text-slate-500 group-[.active]/item:text-primary-500 group-hover:text-primary-500">
-                                    Suivi des Analyses (<span id="analyses-count">{{ $countAnalyses }}</span>)
+                                    Suivi des Analyses (<span id="analyses-count">{{ \App\Models\Prescription::where('status', '!=', \App\Models\Prescription::STATUS_ARCHIVE)->count() }}</span>)
                                 </span>
                             </a>
                         </li>
                     @endif
-                    {{-- Section Secrétaire --}}
-                    @if(auth()->check() && auth()->user()->type === 'secretaire')
+
+                    {{-- Section Secrétaire / Gestion Prescriptions --}}
+                    @if(auth()->check() && auth()->user()->hasPermission('prescriptions.view'))
                         <li
                             class="relative first:pt-1 pt-6 pb-1 px-4 before:absolute before:h-px before:w-full before:start-0 before:top-1/2 before:bg-gray-200 dark:before:bg-gray-900 first:before:hidden before:opacity-0 group-[&.is-compact:not(.has-hover)]/sidebar:before:opacity-100">
                             <h6
@@ -126,7 +130,9 @@
                                     class="group-[&.is-compact:not(.has-hover)]/sidebar:opacity-0 flex-grow-1 inline-block whitespace-nowrap transition-all duration-300 text-sm text-slate-600 dark:text-slate-500 group-[.active]/item:text-primary-500 group-hover:text-primary-500">Etiquettes</span>
                             </a>
                         </li>
+                    @endif
 
+                    @if(auth()->check() && auth()->user()->hasPermission('patients.view'))
                         <li
                             class="nk-menu-item py-0{{ request()->routeIs('secretaire.patients', 'secretaire.patient.detail') ? ' active' : '' }} group/item">
                             <a href="{{ route('secretaire.patients') }}"
@@ -140,7 +146,9 @@
                                     class="group-[&.is-compact:not(.has-hover)]/sidebar:opacity-0 flex-grow-1 inline-block whitespace-nowrap transition-all duration-300 text-sm text-slate-600 dark:text-slate-500 group-[.active]/item:text-primary-500 group-hover:text-primary-500">Patients</span>
                             </a>
                         </li>
+                    @endif
 
+                    @if(auth()->check() && auth()->user()->hasPermission('prescripteurs.view'))
                         <li
                             class="nk-menu-item py-0{{ request()->routeIs('secretaire.prescripteurs') ? ' active' : '' }} group/item">
                             <a href="{{ route('secretaire.prescripteurs') }}"
@@ -157,7 +165,7 @@
                     @endif
 
                     <!-- Technicien -->
-                    @if(auth()->check() && auth()->user()->type === 'technicien')
+                    @if(auth()->check() && auth()->user()->hasPermission('analyses.perform'))
                         <li
                             class="nk-menu-item py-0{{ request()->routeIs('technicien.index') ? ' active' : '' }} group/item">
                             <a href="{{ route('technicien.index') }}"
@@ -176,7 +184,7 @@
                     @endif
 
                     <!-- Biologiste -->
-                    @if(auth()->check() && auth()->user()->type === 'biologiste')
+                    @if(auth()->check() && auth()->user()->hasPermission('analyses.validate'))
                         <li
                             class="nk-menu-item py-0{{ request()->routeIs('biologiste.analyse.index') ? ' active' : '' }} group/item">
                             <a href="{{ route('biologiste.analyse.index') }}"
@@ -194,9 +202,10 @@
                         </li>
                     @endif
 
-                    @if(auth()->check() && auth()->user()->type === 'admin')
+                    @if(auth()->check() && auth()->user()->hasPermission('trash.access'))
                         @php
-                            $countTrace = \App\Models\Patient::onlyTrashed()->count();
+                            $countTrace = \App\Models\Patient::onlyTrashed()->count()
+                                + \App\Models\Prescription::onlyTrashed()->count();
                         @endphp
 
                         <li
@@ -215,7 +224,9 @@
                             </a>
                         </li>
                     @endif
+
                     <!-- Archives -->
+                    @if(auth()->check() && auth()->user()->hasPermission('archives.access'))
                     <li class="nk-menu-item py-0{{ request()->routeIs('archives') ? ' active' : '' }} group/item">
                         <a href="{{ route('archives') }}"
                             class="nk-menu-link flex relative items-center align-middle py-2 ps-5 pe-8 font-heading font-bold tracking-snug group">
@@ -231,10 +242,11 @@
                             </span>
                         </a>
                     </li>
+                    @endif
 
                     <hr class="my-4 border-0 border-t border-gray-300 dark:border-gray-800">
                     {{-- Section Laboratoire --}}
-                    @if(auth()->check() && in_array(auth()->user()->type, ['technicien', 'biologiste', 'admin']))
+                    @if(auth()->check() && (auth()->user()->hasPermission('laboratory.manage') || auth()->user()->hasAnyPermission(['analyses.perform', 'analyses.validate'])))
                         <li
                             class="relative first:pt-1 pt-6 pb-1 px-4 before:absolute before:h-px before:w-full before:start-0 before:top-1/2 before:bg-gray-200 dark:before:bg-gray-900 first:before:hidden before:opacity-0 group-[&.is-compact:not(.has-hover)]/sidebar:before:opacity-100">
                             <h6
@@ -343,7 +355,7 @@
                     @endif
 
                     {{-- Section Administration --}}
-                    @if(auth()->check() && auth()->user()->type === 'admin')
+                    @if(auth()->check() && auth()->user()->hasAnyPermission(['users.manage', 'settings.manage']))
                         <li
                             class="relative first:pt-1 pt-6 pb-1 px-4 before:absolute before:h-px before:w-full before:start-0 before:top-1/2 before:bg-gray-200 dark:before:bg-gray-900 first:before:hidden before:opacity-0 group-[&.is-compact:not(.has-hover)]/sidebar:before:opacity-100">
                             <h6
@@ -364,6 +376,21 @@
                             </a>
                         </li>
 
+                        <li class="nk-menu-item py-0{{ request()->routeIs('admin.permissions') ? ' active' : '' }} group/item">
+                            <a href="{{ route('admin.permissions') }}"
+                                class="nk-menu-link flex relative items-center align-middle py-2 ps-5 pe-8 font-heading font-bold tracking-snug group">
+                                <span
+                                    class="font-normal tracking-normal w-8 inline-flex flex-grow-0 flex-shrink-0 text-slate-400 group-[.active]/item:text-primary-500 group-hover:text-primary-500">
+                                    <em
+                                        class="text-xl leading-none text-current transition-all duration-300 icon ni ni-shield-check"></em>
+                                </span>
+                                <span
+                                    class="group-[&.is-compact:not(.has-hover)]/sidebar:opacity-0 flex-grow-1 inline-block whitespace-nowrap transition-all duration-300 text-sm text-slate-600 dark:text-slate-500 group-[.active]/item:text-primary-500 group-hover:text-primary-500">Permissions</span>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if(auth()->check() && auth()->user()->hasPermission('settings.manage'))
                         <li class="nk-menu-item py-0{{ request()->routeIs('admin.settings') ? ' active' : '' }} group/item">
                             <a href="{{ route('admin.settings') }}"
                                 class="nk-menu-link flex relative items-center align-middle py-2 ps-5 pe-8 font-heading font-bold tracking-snug group">

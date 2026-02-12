@@ -77,11 +77,11 @@
                                         <input type="checkbox" wire:click="togglePaiementStatus({{ $prescription->id }})"
                                             class="sr-only peer" {{ $estPaye ? 'checked' : '' }} readonly>
                                         <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 
-                                                            peer-checked:after:translate-x-full peer-checked:after:border-white 
-                                                            after:content-[''] after:absolute after:top-0.5 after:left-[2px] 
-                                                            after:bg-white after:border-gray-300 after:border after:rounded-full 
-                                                            after:h-5 after:w-5 after:transition-all 
-                                                            peer-checked:bg-green-600">
+                                                                                    peer-checked:after:translate-x-full peer-checked:after:border-white 
+                                                                                    after:content-[''] after:absolute after:top-0.5 after:left-[2px] 
+                                                                                    after:bg-white after:border-gray-300 after:border after:rounded-full 
+                                                                                    after:h-5 after:w-5 after:transition-all 
+                                                                                    peer-checked:bg-green-600">
                                         </div>
                                     </label>
 
@@ -89,7 +89,7 @@
                                     <div class="flex flex-col">
                                         <span
                                             class="text-sm font-medium 
-                                                    {{ $estPaye ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                                                            {{ $estPaye ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                                             {{ $estPaye ? 'Payé' : 'Non Payé' }}
                                         </span>
 
@@ -139,12 +139,15 @@
                         <div class="flex gap-2">
                             @if (isset($currentTab) && $currentTab === 'deleted')
                                 {{-- Actions pour la corbeille --}}
-                                <button wire:click="confirmRestore({{ $prescription->id }})"
-                                    class="inline-flex items-center justify-center w-8 h-8 text-amber-600 bg-amber-100 rounded-lg hover:bg-amber-200 transition-colors"
-                                    title="Récupérer">
-                                    <em class="ni ni-undo"></em>
-                                </button>
-                                @if (auth()->check() && auth()->user()->type === 'admin')
+                                @if(auth()->user()->hasAnyPermission(['prescriptions.view', 'prescriptions.edit']))
+                                    <button wire:click="confirmRestore({{ $prescription->id }})"
+                                        class="inline-flex items-center justify-center w-8 h-8 text-amber-600 bg-amber-100 rounded-lg hover:bg-amber-200 transition-colors"
+                                        title="Récupérer">
+                                        <em class="ni ni-undo"></em>
+                                    </button>
+                                @endif
+
+                                @if (auth()->user()->hasPermission('trash.access'))
                                     <button wire:click="confirmPermanentDelete({{ $prescription->id }})"
                                         class="inline-flex items-center justify-center w-8 h-8 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
                                         title="Supprimer définitivement">
@@ -153,16 +156,21 @@
                                 @endif
                             @elseif(isset($currentTab) && $currentTab === 'actives')
                                 {{-- Actions pour les prescriptions actives --}}
-                                <a href="{{ route('secretaire.prescription.edit', ['prescriptionId' => $prescription->id]) }}"
-                                    class="inline-flex items-center justify-center w-8 h-8 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
-                                    title="Modifier">
-                                    <em class="ni ni-edit"></em>
-                                </a>
-                                <button wire:click="confirmDelete({{ $prescription->id }})"
-                                    class="inline-flex items-center justify-center w-8 h-8 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
-                                    title="Corbeille">
-                                    <em class="ni ni-trash"></em>
-                                </button>
+                                @if(auth()->user()->hasPermission('prescriptions.edit'))
+                                    <a href="{{ route('secretaire.prescription.edit', ['prescriptionId' => $prescription->id]) }}"
+                                        class="inline-flex items-center justify-center w-8 h-8 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
+                                        title="Modifier">
+                                        <em class="ni ni-edit"></em>
+                                    </a>
+                                @endif
+
+                                @if(auth()->user()->hasPermission('prescriptions.edit'))
+                                    <button wire:click="confirmDelete({{ $prescription->id }})"
+                                        class="inline-flex items-center justify-center w-8 h-8 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+                                        title="Corbeille">
+                                        <em class="ni ni-trash"></em>
+                                    </button>
+                                @endif
                             @elseif(isset($currentTab) && $currentTab === 'valide')
                                 {{-- Actions pour les prescriptions validées --}}
                                 <a href="{{ route('laboratoire.prescription.pdf', $prescription->id) }}" target="_blank"
@@ -172,25 +180,31 @@
                                     <em class="text-xl ni ni-file-pdf"></em>
                                 </a>
 
-                                <button wire:click="confirmArchive({{ $prescription->id }})"
-                                    class="inline-flex items-center justify-center w-8 h-8 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                                    title="Archiver">
-                                    <em class="ni ni-archive"></em>
-                                </button>
+                                @if(auth()->user()->hasAnyPermission(['analyses.view', 'analyses.perform', 'analyses.validate']))
+                                    <button wire:click="confirmArchive({{ $prescription->id }})"
+                                        class="inline-flex items-center justify-center w-8 h-8 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                        title="Archiver">
+                                        <em class="ni ni-archive"></em>
+                                    </button>
+                                @endif
 
                                 {{-- Bouton Notifier --}}
-                                <button
-                                    wire:click="$dispatch('openNotificationModal', { prescriptionId: {{ $prescription->id }} })"
-                                    class="inline-flex items-center justify-center w-8 h-8 {{ $prescription->notified_at ? 'text-blue-600 bg-blue-100' : 'text-slate-600 bg-slate-100' }} rounded-lg hover:bg-blue-200 transition-colors"
-                                    title="{{ $prescription->notified_at ? 'Notifié le ' . $prescription->notified_at->format('d/m/Y') : 'Notifier le patient' }}">
-                                    <em class="ni ni-bell"></em>
-                                </button>
+                                @if(auth()->user()->hasPermission('prescriptions.edit'))
+                                    <button
+                                        wire:click="$dispatch('openNotificationModal', { prescriptionId: {{ $prescription->id }} })"
+                                        class="inline-flex items-center justify-center w-8 h-8 {{ $prescription->notified_at ? 'text-blue-600 bg-blue-100' : 'text-slate-600 bg-slate-100' }} rounded-lg hover:bg-blue-200 transition-colors"
+                                        title="{{ $prescription->notified_at ? 'Notifié le ' . $prescription->notified_at->format('d/m/Y') : 'Notifier le patient' }}">
+                                        <em class="ni ni-bell"></em>
+                                    </button>
+                                @endif
 
-                                <button wire:click="confirmDelete({{ $prescription->id }})"
-                                    class="inline-flex items-center justify-center w-8 h-8 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
-                                    title="Corbeille">
-                                    <em class="ni ni-trash"></em>
-                                </button>
+                                @if(auth()->user()->hasPermission('prescriptions.edit'))
+                                    <button wire:click="confirmDelete({{ $prescription->id }})"
+                                        class="inline-flex items-center justify-center w-8 h-8 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+                                        title="Corbeille">
+                                        <em class="ni ni-trash"></em>
+                                    </button>
+                                @endif
                             @endif
                         </div>
                     </td>

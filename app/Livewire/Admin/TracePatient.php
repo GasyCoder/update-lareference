@@ -43,8 +43,7 @@ class TracePatient extends Component
     public function updateCount()
     {
         $this->dispatch('updateTraceCount', [
-            'patients' => Patient::onlyTrashed()->count(),
-            'prescriptions' => Prescription::onlyTrashed()->count()
+            'count' => Patient::onlyTrashed()->count() + Prescription::onlyTrashed()->count()
         ]);
     }
 
@@ -191,7 +190,7 @@ class TracePatient extends Component
     {
         try {
             $patients = Patient::onlyTrashed()->whereIn('id', $this->selectedPatients)->get();
-            
+
             foreach ($patients as $patient) {
                 $patient->forceDeleteWithRelations();
             }
@@ -224,7 +223,7 @@ class TracePatient extends Component
     {
         try {
             $patients = Patient::onlyTrashed()->get();
-            
+
             foreach ($patients as $patient) {
                 $patient->forceDeleteWithRelations();
             }
@@ -319,7 +318,7 @@ class TracePatient extends Component
     {
         try {
             $prescriptions = Prescription::onlyTrashed()->whereIn('id', $this->selectedPrescriptions)->get();
-            
+
             foreach ($prescriptions as $prescription) {
                 $prescription->forceDeleteWithRelations();
             }
@@ -352,7 +351,7 @@ class TracePatient extends Component
     {
         try {
             $prescriptions = Prescription::onlyTrashed()->get();
-            
+
             foreach ($prescriptions as $prescription) {
                 $prescription->forceDeleteWithRelations();
             }

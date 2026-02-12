@@ -19,7 +19,7 @@ class RoleRedirectMiddleware
     {
         if (Auth::check() && $request->route()->getName() === 'dashboard') {
             $user = Auth::user();
-            
+
             // Rediriger les utilisateurs non-admin vers leurs sections spécifiques
             switch ($user->type) {
                 case 'biologiste':

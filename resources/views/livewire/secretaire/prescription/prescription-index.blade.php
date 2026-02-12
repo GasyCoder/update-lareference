@@ -62,14 +62,16 @@
                 @endif
             </div>
 
-            {{-- Nouveau bouton --}}
-            <div class="flex-shrink-0">
-                <a href="{{ route('secretaire.prescription.create') }}" wire:navigate
-                    class="inline-flex items-center px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all">
-                    <em class="ni ni-plus mr-2"></em>
-                    Nouvelle prescription
-                </a>
-            </div>
+            @if(auth()->user()->hasPermission('prescriptions.view'))
+                {{-- Nouveau bouton --}}
+                <div class="flex-shrink-0">
+                    <a href="{{ route('secretaire.prescription.create') }}" wire:navigate
+                        class="inline-flex items-center px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all">
+                        <em class="ni ni-plus mr-2"></em>
+                        Nouvelle prescription
+                    </a>
+                </div>
+            @endif
         </div>
     </div>
 

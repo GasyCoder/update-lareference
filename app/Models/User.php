@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -51,7 +52,7 @@ class User extends Authenticatable
      */
     public function getAuthIdentifierName()
     {
-        return 'id'; 
+        return 'id';
     }
     /**
      * Get the unique identifier for the user.
@@ -144,6 +145,32 @@ class User extends Authenticatable
         return in_array($this->type, $roles);
     }
 
+    /**
+     * Vérifie si l'utilisateur a une permission spécifique (via role_permissions)
+     */
+    public function hasPermission(string $permission): bool
+    {
+        return DB::table('role_permissions')
+            ->join('permissions', 'role_permissions.permission_id', '=', 'permissions.id')
+            ->where('role_permissions.role', $this->type)
+            ->where('permissions.name', $permission)
+            ->where('role_permissions.granted', true)
+            ->exists();
+    }
+
+    /**
+     * Vérifie si l'utilisateur a au moins une des permissions (OR)
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        return DB::table('role_permissions')
+            ->join('permissions', 'role_permissions.permission_id', '=', 'permissions.id')
+            ->where('role_permissions.role', $this->type)
+            ->whereIn('permissions.name', $permissions)
+            ->where('role_permissions.granted', true)
+            ->exists();
+    }
+
     public function canAccessAdmin(): bool
     {
         return $this->isAdmin();
@@ -151,17 +178,54 @@ class User extends Authenticatable
 
     public function canManagePrescriptions(): bool
     {
-        return $this->hasRole([self::TYPE_ADMIN, self::TYPE_SECRETAIRE]);
+        return $this->hasPermission('prescriptions.view');
     }
 
     public function canPerformAnalyses(): bool
     {
-        return $this->hasRole([self::TYPE_ADMIN, self::TYPE_TECHNICIEN, self::TYPE_BIOLOGISTE]);
+        return $this->hasPermission('analyses.perform');
     }
 
     public function canValidateResults(): bool
     {
-        return $this->hasRole([self::TYPE_ADMIN, self::TYPE_BIOLOGISTE]);
+        return $this->hasPermission('analyses.validate');
+    }
+
+    // ========== MÉTHODES DE GESTION DES PERMISSIONS (PAR RÔLE) ==========
+    // Note: Ces méthodes ne sont plus utilisées directement sur l'utilisateur individuel
+    // mais via le composant de gestion des permissions par rôle.
+
+    /**
+     * Obtient les permissions par défaut selon le rôle
+     */
+    public function getDefaultPermissions(): array
+    {
+        return match ($this->type) {
+            self::TYPE_SECRETAIRE => [
+                'prescriptions.view',
+                'prescriptions.create',
+                'prescriptions.edit',
+                'patients.view',
+                'patients.manage',
+                'prescripteurs.view',
+                'prescripteurs.manage',
+                'archives.access',
+            ],
+            self::TYPE_TECHNICIEN => [
+                'analyses.view',
+                'analyses.perform',
+                'laboratory.manage',
+                'archives.access',
+            ],
+            self::TYPE_BIOLOGISTE => [
+                'analyses.view',
+                'analyses.validate',
+                'laboratory.manage',
+                'archives.access',
+            ],
+            self::TYPE_ADMIN => [], // Admin a toutes les permissions
+            default => [],
+        };
     }
 
     // ========== SCOPES ==========
@@ -194,11 +258,28 @@ class User extends Authenticatable
     {
         return $query->where(function ($q) use ($search) {
             $q->where('name', 'like', "%{$search}%")
-              ->orWhere('username', 'like', "%{$search}%");
+                ->orWhere('username', 'like', "%{$search}%");
         });
     }
 
     // ========== RELATIONS ==========
+    public function permissions()
+    {
+        return $this->belongsToMany(Permission::class, 'user_permissions')
+            ->withPivot('granted')
+            ->withTimestamps();
+    }
+
+    /**
+     * Obtenir les permissions associées au rôle du user
+     */
+    public function rolePermissions()
+    {
+        return DB::table('role_permissions')
+            ->where('role', $this->type)
+            ->get();
+    }
+
     public function prescriptions()
     {
         return $this->hasMany(Prescription::class, 'secretaire_id');
@@ -213,6 +294,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Resultat::class, 'biologiste_id');
     }
+
+    // Relation role_permissions via DB (plus de relation directe Pivot sur User)
+
 
     // ========== MÉTHODES UTILITAIRES ==========
     public static function getAvailableTypes(): array

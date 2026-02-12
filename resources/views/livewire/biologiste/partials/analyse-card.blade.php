@@ -97,15 +97,19 @@
                                 <div class="flex items-center gap-2">
                                     {{-- Bouton Valider (si statut TERMINE) --}}
                                     @if($prescription->status === 'TERMINE')
-                                        <button wire:click="openConfirmModal({{ $prescription->id }})" 
-                                                wire:loading.attr="disabled"
-                                                class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center justify-center gap-2">
-                                            
-                                            <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                            </svg>
-                                            <span>Valider</span>
-                                        </button>
+                                        @if(auth()->user()->hasPermission('analyses.validate'))
+                                            <button wire:click="openConfirmModal({{ $prescription->id }})" 
+                                                    wire:loading.attr="disabled"
+                                                    class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center justify-center gap-2">
+                                                
+                                                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                <span>Valider</span>
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-gray-400 italic">Lecture seule</span>
+                                        @endif
                                     @endif
 
                                     {{-- ✅ CORRECTION : Bouton APERÇU PDF - TOUJOURS DISPONIBLE --}}
@@ -139,6 +143,7 @@
                                         </span>
                                     @endif                    
                                     {{-- Bouton À refaire (si prescription validée) --}}
+                                    @if(auth()->user()->hasPermission('analyses.validate'))
                                         <button wire:click="redoPrescription({{ $prescription->id }})" 
                                                 wire:loading.attr="disabled"
                                                 wire:target="redoPrescription({{ $prescription->id }})"
@@ -160,6 +165,7 @@
                                                 <span>Traitement...</span>
                                             </span>
                                         </button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

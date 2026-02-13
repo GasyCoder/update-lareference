@@ -1,6 +1,7 @@
 <div>
     @if ($prescriptions->count() > 0)
-        <div class="overflow-x-auto">
+        {{-- Layout Bureau (Tableau) --}}
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-sm text-left text-slate-600 dark:text-slate-200">
                 <thead
                     class="bg-gray-50 dark:bg-slate-800 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
@@ -92,7 +93,7 @@
                                         {{ $prescription->created_at->format('H:i') }}
                                     </div>
                             </td>
-                            {{-- Colonne Actions corrigée --}}
+                            {{-- Colonne Actions (INITIAL) --}}
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
                                     {{-- Bouton Valider (si statut TERMINE) --}}
@@ -186,6 +187,84 @@
             </table>
         </div>
 
+        {{-- Layout Mobile (Cartes - MATCHING SCREENSHOT FULL SCREEN) --}}
+        <div class="md:hidden space-y-3 p-1 bg-[#111827]">
+            @forelse($prescriptions as $prescription)
+                <div class="bg-[#1E2533] rounded-2xl shadow-xl border border-gray-800 p-4 space-y-4">
+                    {{-- Ligne Patient --}}
+                    <div class="flex items-center gap-3">
+                        <div class="flex-shrink-0 flex items-center justify-center text-sm text-white bg-[#7C3AED] h-11 w-11 rounded-full font-black shadow-lg">
+                            <span>{{ strtoupper(substr($prescription->patient->nom ?? 'N', 0, 1) . substr($prescription->patient->prenom ?? 'A', 0, 1)) }}</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <h4 class="text-[17px] font-black text-white uppercase tracking-tight">
+                                {{ ($prescription->patient->nom ?? 'N/A') . ' ' . ($prescription->patient->prenom ?? '') }}
+                            </h4>
+                        </div>
+                    </div>
+
+                    {{-- Prescripteur --}}
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="font-bold text-gray-500">Presc:</span>
+                        <span class="text-gray-300 font-medium">Dr {{ ($prescription->prescripteur->nom ?? 'N/A') . ' ' . ($prescription->prescripteur->prenom ?? '') }}</span>
+                    </div>
+
+                    {{-- Badges Analyses --}}
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($prescription->analyses as $analyse)
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-[#3B82F6] text-white">
+                                {{ $analyse->abreviation ?? $analyse->designation }}
+                            </span>
+                        @endforeach
+                    </div>
+
+                    {{-- Bouton Aperçu (Large - RED) --}}
+                    @php
+                        $hasAnyResults = $prescription->resultats()->whereNotNull('valeur')->exists();
+                    @endphp
+
+                    @if($hasAnyResults)
+                        <a href="{{ route('laboratoire.prescription.pdf', $prescription->id) }}" 
+                           target="_blank"
+                           class="flex items-center justify-center w-full py-4 px-4 bg-[#E11D48] hover:bg-[#BE123C] text-white rounded-xl text-sm font-black transition-all active:scale-[0.98] shadow-lg gap-2">
+                            <span>Aperçu</span>
+                        </a>
+                    @else
+                        <button disabled class="w-full py-4 px-4 bg-gray-700 text-gray-400 rounded-xl text-sm font-black opacity-50 cursor-not-allowed">
+                            Pas d'aperçu
+                        </button>
+                    @endif
+
+                    {{-- Boutons d'action --}}
+                    <div class="grid grid-cols-2 gap-3">
+                        <button wire:click="redoPrescription({{ $prescription->id }})"
+                                onclick="return confirm('Êtes-vous sûr ?')"
+                                class="flex items-center justify-center py-4 px-4 bg-[#F59E0B] hover:bg-[#D97706] text-white rounded-xl text-sm font-black transition-all shadow-md gap-2">
+                            <span class="text-xs">À refaire</span>
+                        </button>
+
+                        <button wire:click="viewAnalyseDetails({{ $prescription->id }})"
+                                class="flex items-center justify-center py-4 px-4 bg-[#6366F1] hover:bg-[#4F46E5] text-white rounded-xl text-sm font-black transition-all shadow-md gap-2">
+                            <span class="text-xs">Détails</span>
+                        </button>
+                    </div>
+
+                    {{-- Bouton Valider séparé ou en haut si disponible --}}
+                    @if($prescription->status === 'TERMINE' && auth()->user()->hasPermission('analyses.validate'))
+                        <button wire:click="openConfirmModal({{ $prescription->id }})"
+                                class="flex items-center justify-center w-full py-4 px-4 bg-[#10B981] hover:bg-[#059669] text-white rounded-xl text-sm font-black transition-all shadow-lg gap-2 mt-2">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Valider</span>
+                        </button>
+                    @endif
+                </div>
+            @empty
+                <div class="bg-[#1E2533] rounded-2xl p-10 text-center border border-dashed border-gray-700">
+                    <p class="text-gray-500 italic">Aucune prescription trouvée</p>
+                </div>
+            @endforelse
+        </div>
+
         <!-- Pagination -->
         @if ($prescriptions->hasPages())
             <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
@@ -215,3 +294,4 @@
             @endif
         </div>
     @endif
+</div>

@@ -10,9 +10,9 @@
                         <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Gestion des Analyses</h1>
                     </div>
                 </div>
-                
+
                 <div class="flex items-center space-x-4">
-                 
+
                     <!-- Date actuelle -->
                     <div class="text-sm text-gray-500 dark:text-gray-400">
                         <em class="text-xl ni ni-calender-date"></em>
@@ -23,9 +23,10 @@
         </div>
     </div>
 
-    <div class="p-6">
-        <!-- Statistiques -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 max-w-md lg:max-w-none">
+    <div class="px-1 sm:p-6">
+        {{-- Statistiques (RESPONSIVE) --}}
+        {{-- Desktop Stats (INITIAL) --}}
+        <div class="hidden md:grid grid-cols-4 gap-3 mb-6 px-4">
             <!-- Terminé -->
             <div class="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 px-3 py-2 rounded-xl border border-orange-200 dark:border-orange-700">
                 <div class="text-xs font-medium text-orange-600 dark:text-orange-400 uppercase tracking-wide">Terminé</div>
@@ -34,7 +35,6 @@
                     <i class="fas fa-clock text-orange-600 dark:text-orange-400 text-sm"></i>
                 </div>
             </div>
-            
             <!-- Validé -->
             <div class="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 px-3 py-2 rounded-xl border border-green-200 dark:border-green-700">
                 <div class="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Validé</div>
@@ -43,7 +43,6 @@
                     <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-sm"></i>
                 </div>
             </div>
-            
             <!-- Urgences -->
             <div class="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 px-3 py-2 rounded-xl border border-red-200 dark:border-red-700">
                 <div class="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wide">Urgences</div>
@@ -52,7 +51,6 @@
                     <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-sm"></i>
                 </div>
             </div>
-            
             <!-- Total -->
             <div class="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-700">
                 <div class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Total</div>
@@ -62,35 +60,74 @@
                 </div>
             </div>
         </div>
+
+        {{-- Mobile Stats (SCREENSHOT) --}}
+        <div class="md:hidden grid grid-cols-2 gap-3 mb-6">
+            <!-- Terminé -->
+            <div class="bg-[#1E2533] px-4 py-3 rounded-xl border border-gray-700">
+                <div class="flex items-center gap-2 mb-1">
+                    <i class="fas fa-list-ul text-blue-500 text-xs"></i>
+                    <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Terminé</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xl font-black text-white">{{ $analyseTermines->total() }}</span>
+                    <span class="px-2 py-0.5 rounded bg-blue-600 text-[10px] font-black text-white shadow-lg">{{ $analyseTermines->total() }}</span>
+                </div>
+            </div>
+            <!-- Validé -->
+            <div class="bg-[#1E2533] px-4 py-3 rounded-xl border border-gray-700">
+                <div class="flex items-center gap-2 mb-1">
+                    <i class="fas fa-check-circle text-green-500 text-xs"></i>
+                    <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Validé</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xl font-black text-white">{{ $analyseValides->total() }}</span>
+                    <span class="px-2 py-0.5 rounded bg-green-500 text-[10px] font-black text-white shadow-lg">{{ $analyseValides->total() }}</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Contenu principal -->
         <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <!-- Barre de recherche et filtres -->
             <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                    <!-- Recherche -->
+                {{-- Desktop Search (INITIAL) --}}
+                <div class="hidden md:flex items-center justify-between gap-4">
                     <div class="relative flex-1 max-w-md">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-search text-gray-400"></i>
                         </div>
                         <input type="text" 
                                wire:model.debounce.300ms="search" 
-                               class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                               class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white placeholder-gray-500"
                                placeholder="Rechercher par patient, prescripteur...">
                         @if($search)
                             <button wire:click="$set('search', '')" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                <i class="fas fa-times text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"></i>
+                                <i class="fas fa-times text-gray-400"></i>
                             </button>
                         @endif
                     </div>
+                    <button wire:click="toggleFilters" class="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 transition-colors">
+                        <em class="ni ni-filter"></em> Filtres
+                    </button>
+                </div>
 
-                    <!-- Actions -->
-                    <div class="flex items-center space-x-3">
-                        <!-- Filtres avancés -->
-                        <button wire:click="toggleFilters" class="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                           <em class="text-xl ni ni-filter"></em>
-                            Filtres
-                        </button>
+                {{-- Mobile Search (SCREENSHOT) --}}
+                <div class="md:hidden space-y-4">
+                    <div class="relative">
+                        <input type="text" 
+                               wire:model.debounce.300ms="search" 
+                               class="w-full px-5 py-4 bg-[#111827] border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-300 placeholder-gray-500 text-sm font-bold shadow-inner"
+                               placeholder="Rechercher par nom, prescripteur ou rense">
+                        @if($search)
+                            <button wire:click="$set('search', '')" class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                                <i class="fas fa-times text-gray-400"></i>
+                            </button>
+                        @endif
                     </div>
+                    <button wire:click="toggleFilters" class="w-full px-5 py-3 bg-[#111827] text-gray-400 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
+                        <i class="fas fa-filter text-blue-500"></i> Filtres
+                    </button>
                 </div>
 
                 <!-- Filtres avancés -->
@@ -106,7 +143,6 @@
                                 @endforeach
                             </select>
                         </div>
-                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Type d'urgence</label>
                             <select wire:model="filterUrgence" class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
@@ -115,11 +151,9 @@
                                 <option value="URGENCE-JOUR">Urgence Jour</option>
                             </select>
                         </div>
-                        
                         <div class="flex items-end">
-                            <button wire:click="resetFilters" class="w-full px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
-                                <i class="fas fa-times mr-2"></i>
-                                Réinitialiser
+                            <button wire:click="resetFilters" class="w-full px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 transition-colors">
+                                <i class="fas fa-times mr-2"></i> Réinitialiser
                             </button>
                         </div>
                     </div>
@@ -127,26 +161,46 @@
                 @endif
             </div>
 
-            <!-- Onglets -->
-            <div class="border-b border-gray-200 dark:border-gray-700">
+            <!-- Onglets (RESPONSIVE) -->
+            {{-- Desktop Tabs (INITIAL) --}}
+            <div class="hidden md:block border-b border-gray-200 dark:border-gray-700">
                 <nav class="flex">
                     <button wire:click="$set('tab', 'termine')"
-                            class="px-6 py-3 border-b-2 font-medium text-sm transition-all duration-200 {{ $tab === 'termine' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' }}">
-                        <i class="fas fa-clock mr-2"></i>
-                        Terminé
-                        <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $tab === 'termine' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }}">
+                            class="px-6 py-3 border-b-2 font-medium text-sm transition-all duration-200 {{ $tab === 'termine' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : 'border-transparent text-gray-500 dark:text-gray-400' }}">
+                        <i class="fas fa-clock mr-2"></i> Terminé
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $tab === 'termine' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-600' }}">
                             {{ $analyseTermines->total() }}
                         </span>
                     </button>
                     <button wire:click="$set('tab', 'valide')"
-                            class="px-6 py-3 border-b-2 font-medium text-sm transition-all duration-200 {{ $tab === 'valide' ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' }}">
-                        <i class="fas fa-check-circle mr-2"></i>
-                        Validé
-                        <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $tab === 'valide' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }}">
+                            class="px-6 py-3 border-b-2 font-medium text-sm transition-all duration-200 {{ $tab === 'valide' ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 dark:text-gray-400' }}">
+                        <i class="fas fa-check-circle mr-2"></i> Validé
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $tab === 'valide' ? 'bg-green-100 dark:bg-green-900/30 text-green-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-600' }}">
                             {{ $analyseValides->total() }}
                         </span>
                     </button>
                 </nav>
+            </div>
+
+            {{-- Mobile Tabs (SCREENSHOT) --}}
+            <div class="md:hidden p-4 flex gap-4 overflow-x-auto">
+                <button wire:click="$set('tab', 'termine')"
+                        class="flex items-center gap-3 px-6 py-4 rounded-xl transition-all duration-300 {{ $tab === 'termine' ? 'bg-[#1E2533] shadow-lg ring-1 ring-gray-700' : 'text-gray-500' }}">
+                    <i class="fas fa-list-ul {{ $tab === 'termine' ? 'text-blue-500' : 'text-gray-600' }}"></i>
+                    <span class="font-bold text-xs uppercase tracking-widest {{ $tab === 'termine' ? 'text-white' : 'text-gray-500' }}">Terminé</span>
+                    <span class="px-2 py-0.5 text-[10px] font-black rounded bg-blue-600 text-white shadow-sm">
+                        {{ $analyseTermines->total() }}
+                    </span>
+                </button>
+
+                <button wire:click="$set('tab', 'valide')"
+                        class="flex items-center gap-3 px-6 py-4 rounded-xl transition-all duration-300 {{ $tab === 'valide' ? 'bg-[#1E2533] shadow-lg ring-1 ring-gray-700' : 'text-gray-500' }}">
+                    <i class="fas fa-check-circle {{ $tab === 'valide' ? 'text-green-500' : 'text-gray-600' }}"></i>
+                    <span class="font-bold text-xs uppercase tracking-widest {{ $tab === 'valide' ? 'text-white' : 'text-gray-500' }}">Validé</span>
+                    <span class="px-2 py-0.5 text-[10px] font-black rounded bg-green-500 text-white shadow-sm">
+                        {{ $analyseValides->total() }}
+                    </span>
+                </button>
             </div>
 
             <!-- Tableau -->
@@ -168,7 +222,7 @@
                 @endif
             </div>
         </div>
-    </div>
+</div>
 </div>
 @include('livewire.biologiste.partials.modal-confirm')
 @push('scripts')
